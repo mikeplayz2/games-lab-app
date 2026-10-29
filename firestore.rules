@@ -1,0 +1,94 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn() && request.auth.uid == "Ie1phoxgUOWEs8KOj32LD5mmj0M2";
+    }
+
+    function validGame(data) {
+      return data.keys().hasAll([
+          "title", "description", "mode", "content", "ownerUid",
+          "creatorName", "creatorPhoto", "createdAt", "updatedAt",
+          "status", "removalMessage", "removedAt"
+        ])
+        && data.title is string
+        && data.title.size() >= 1
+        && data.title.size() <= 60
+        && data.description is string
+        && data.description.size() <= 240
+        && data.mode in ["html", "url"]
+        && data.content is string
+        && data.content.size() >= 1
+        && data.content.size() <= 80000
+        && data.creatorName is string
+        && data.creatorName.size() >= 1
+        && data.creatorName.size() <= 40
+        && data.creatorPhoto is string
+        && data.creatorPhoto.size() <= 80000
+        && (data.creatorPhoto == ""
+          || data.creatorPhoto.matches("https://.*")
+          || data.creatorPhoto.matches("data:image/jpeg;base64,.*"))
+        && (data.mode != "url" || data.content.matches("https://.*"));
+    }
+
+    match /communityGames/{gameId} {
+      allow read: if signedIn()
+        && (resource.data.status == "published"
+          || resource.data.ownerUid == request.auth.uid
+          || isAdmin());
+
+      allow create: if signedIn()
+        && validGame(request.resource.data)
+        && request.resource.data.keys().hasOnly([
+          "title", "description", "mode", "content", "ownerUid",
+          "creatorName", "creatorPhoto", "createdAt", "updatedAt",
+          "status", "removalMessage", "removedAt"
+        ])
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.status == "published"
+        && request.resource.data.removalMessage == ""
+        && request.resource.data.removedAt == null
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+
+      allow update: if isAdmin()
+        && resource.data.status == "published"
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "status", "removalMessage", "removedAt", "updatedAt"
+        ])
+        && request.resource.data.status == "removed"
+        && request.resource.data.removalMessage is string
+        && request.resource.data.removalMessage.size() >= 1
+        && request.resource.data.removalMessage.size() <= 500
+        && request.resource.data.removedAt == request.time
+        && request.resource.data.updatedAt == request.time;
+
+      allow delete: if false;
+    }
+
+    match /communityProfiles/{userId} {
+      allow get: if signedIn();
+      allow list: if false;
+      allow create, update: if signedIn()
+        && request.auth.uid == userId
+        && request.resource.data.keys().hasOnly([
+          "uid", "displayName", "photoUrl", "updatedAt"
+        ])
+        && request.resource.data.uid == userId
+        && request.resource.data.displayName is string
+        && request.resource.data.displayName.size() >= 1
+        && request.resource.data.displayName.size() <= 40
+        && request.resource.data.photoUrl is string
+        && request.resource.data.photoUrl.size() <= 80000
+        && (request.resource.data.photoUrl == ""
+          || request.resource.data.photoUrl.matches("https://.*")
+          || request.resource.data.photoUrl.matches("data:image/jpeg;base64,.*"))
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if false;
+    }
+  }
+}

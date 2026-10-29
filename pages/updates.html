@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#071226">
+  <title>Updates | Games Lab</title>
+  <link rel="stylesheet" href="../css/site.css">
+  <style>
+    .updates-layout { display: grid; grid-template-columns: minmax(0, 1fr) 290px; gap: 18px; align-items: start; }
+    .timeline { display: grid; gap: 14px; }
+    .update-card { position: relative; padding: 23px 24px 23px 28px; border-radius: 20px; }
+    .update-card::before { position: absolute; top: 28px; bottom: 28px; left: 0; width: 3px; border-radius: 4px; background: linear-gradient(var(--accent), #38bdf8); content: ""; }
+    .update-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; color: var(--muted); font-size: .79rem; }
+    .update-tag { padding: 5px 9px; border-radius: 999px; background: var(--accent-glow); color: #dbeafe; font-size: .72rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+    .update-card h3 { margin: 14px 0 8px; font-size: 1.25rem; }
+    .update-card p { margin: 0; color: #c1ccdc; line-height: 1.7; }
+    .side-card { padding: 23px; border-radius: 20px; }
+    .side-card h3 { margin: 0 0 12px; }
+    .side-card p { margin: 0; color: var(--muted); font-size: .92rem; line-height: 1.65; }
+    .side-card .button { width: 100%; margin-top: 18px; }
+    .update-icon { display: inline-grid; width: 35px; height: 35px; margin-right: 8px; place-items: center; border-radius: 11px; background: rgba(255,255,255,.07); }
+    @media (max-width: 760px) { .updates-layout { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <header class="app-header">
+      <a class="brand" href="./dashboard.html">
+        <img src="../assets/logo.png" alt="">
+        <span><h1>Games Lab</h1><p>Play. Create. Discover.</p></span>
+      </a>
+      <a class="user-chip" href="./profile.html" aria-label="Open your profile">
+        <img data-user-avatar src="../assets/logo.png" alt="">
+        <span><strong data-user-name>Loading...</strong><small>Player profile</small></span>
+      </a>
+    </header>
+
+    <section class="page-hero">
+      <p class="eyebrow">FRESH FROM THE LAB</p>
+      <h2>Small updates.<br>Big energy.</h2>
+      <p>Catch up on the latest experiments, improvements, and adventures from the Games Lab universe.</p>
+    </section>
+
+    <div class="updates-layout">
+      <section aria-labelledby="timeline-heading">
+        <div class="section-heading"><div><h2 id="timeline-heading">The latest</h2><p>News from the Games Lab workshop.</p></div></div>
+        <div class="timeline">
+          <article class="update-card glass">
+            <div class="update-meta"><span class="update-tag">Platform</span><time datetime="2026-10">October 2026</time></div>
+            <h3><span class="update-icon" aria-hidden="true">🧪</span>A new home for Games Lab</h3>
+            <p>The dashboard has a fresh look, and dedicated spaces for games, updates, your profile, and preferences are now part of the experience.</p>
+          </article>
+          <article class="update-card glass">
+            <div class="update-meta"><span class="update-tag">Games</span><time datetime="2026-10">October 2026</time></div>
+            <h3><span class="update-icon" aria-hidden="true">🎮</span>The library is open</h3>
+            <p>Discover upcoming projects in one place. Game listings support search, genre filters, colourful cover art, and a simple catalog that’s easy to grow.</p>
+          </article>
+          <article class="update-card glass">
+            <div class="update-meta"><span class="update-tag">Coming up</span><span>In the workshop</span></div>
+            <h3><span class="update-icon" aria-hidden="true">🚀</span>More worlds are on the way</h3>
+            <p>We’re shaping the next wave of playable experiences and continuing to improve the Games Lab platform. Keep an eye on this page for the next drop.</p>
+          </article>
+        </div>
+      </section>
+      <aside class="side-card glass">
+        <h3><span class="update-icon" aria-hidden="true">✨</span>Stay in the loop</h3>
+        <p>There’s always something being tinkered with. Explore the current lineup, then swing back for more news.</p>
+        <a class="button" href="./games.html">Explore the games →</a>
+      </aside>
+    </div>
+  </main>
+  <nav class="dock glass" aria-label="Main navigation">
+    <a href="./dashboard.html" aria-label="Home" title="Home">⌂</a>
+    <a href="./games.html" aria-label="Games" title="Games">🎮</a>
+    <a href="./local-games.html" aria-label="Local games" title="Local games">🖥️</a>
+    <a href="./community.html" aria-label="Community" title="Community">👥</a>
+    <a class="active" href="./updates.html" aria-label="Updates" title="Updates" aria-current="page">◷</a>
+    <a href="./profile.html" aria-label="Profile" title="Profile">👤</a>
+    <a href="./settings.html" aria-label="Settings" title="Settings">⚙️</a>
+    <a href="./tutorial.html" aria-label="Tutorial" title="Tutorial">ⓘ</a>
+  </nav>
+  <script src="../js/desktop.js"></script>
+  <script type="module" src="../js/app.js"></script>
+</body>
+</html>

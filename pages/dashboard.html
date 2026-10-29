@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#071226">
+  <title>Dashboard | Games Lab</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: "Segoe UI", Arial, sans-serif;
+      color: #f8fafc;
+      background: #071226;
+      --muted: #a7b5ca;
+      --line: rgba(255, 255, 255, .11);
+      --panel: rgba(15, 28, 51, .76);
+      --blue: #93c5fd;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; scroll-padding-top: 24px; }
+
+    body {
+      min-width: 320px;
+      min-height: 100vh;
+      margin: 0;
+      padding: 26px 26px 116px;
+      background:
+        radial-gradient(ellipse at 9% 2%, rgba(37, 99, 235, .28), transparent 34%),
+        radial-gradient(ellipse at 96% 54%, rgba(14, 165, 233, .15), transparent 33%),
+        linear-gradient(135deg, #020617, #0b1528 56%, #101827);
+    }
+
+    button, a { font: inherit; }
+    button:focus-visible, a:focus-visible, input:focus-visible {
+      outline: 3px solid #93c5fd;
+      outline-offset: 3px;
+    }
+
+    .container { width: min(1120px, 100%); margin: 0 auto; }
+    .glass {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      box-shadow: 0 18px 55px rgba(0, 0, 0, .16);
+      backdrop-filter: blur(22px);
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 28px;
+    }
+
+    .brand { display: flex; align-items: center; gap: 14px; }
+    .brand img { width: 58px; height: 58px; border-radius: 17px; object-fit: cover; }
+    .brand h1 { margin: 0; font-size: 1.35rem; letter-spacing: -.03em; }
+    .brand p { margin: 4px 0 0; color: var(--muted); font-size: .88rem; }
+
+    .profile-button {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 14px 8px 8px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, .065);
+      color: #fff;
+      text-align: left;
+      cursor: pointer;
+      transition: background .2s, transform .2s;
+    }
+    .profile-button:hover { transform: translateY(-2px); background: rgba(255, 255, 255, .11); }
+    .profile-button img { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; }
+    .profile-button strong { display: block; max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .profile-button small { display: block; margin-top: 3px; color: var(--muted); }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 20px;
+      padding: clamp(30px, 6vw, 62px);
+      border-radius: 30px;
+      background:
+        radial-gradient(ellipse at 90% 10%, rgba(56, 189, 248, .22), transparent 38%),
+        linear-gradient(115deg, rgba(30, 64, 175, .38), rgba(15, 28, 51, .76));
+    }
+    .eyebrow { margin: 0 0 14px; color: var(--blue); font-size: .75rem; font-weight: 800; letter-spacing: .16em; }
+    .hero h2 { max-width: 700px; margin: 0 0 12px; font-size: clamp(2.15rem, 5vw, 3.5rem); letter-spacing: -.05em; }
+    .hero p { max-width: 650px; margin: 0; color: #d3deec; line-height: 1.75; }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 25px; }
+    .button {
+      display: inline-flex;
+      min-height: 46px;
+      align-items: center;
+      justify-content: center;
+      padding: 0 18px;
+      border: 1px solid transparent;
+      border-radius: 13px;
+      background: linear-gradient(135deg, #2563eb, #0ea5e9);
+      color: white;
+      font-weight: 700;
+      text-decoration: none;
+      transition: transform .18s, filter .18s;
+    }
+    .button:hover { transform: translateY(-2px); filter: brightness(1.08); }
+    .button.secondary { border-color: var(--line); background: rgba(255, 255, 255, .07); }
+
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px; }
+    .card { padding: 24px; border-radius: 22px; }
+    .card h3 { margin: 0 0 16px; font-size: 1.04rem; }
+    .countdown { color: var(--blue); font-size: clamp(1.8rem, 4vw, 2.45rem); font-weight: 800; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+    .card-note { margin: 8px 0 0; color: var(--muted); font-size: .9rem; }
+    .news-list { display: grid; gap: 10px; }
+    .news-item { padding: 13px 15px; border: 1px solid rgba(255, 255, 255, .055); border-radius: 14px; background: rgba(255, 255, 255, .035); color: #dce6f5; }
+
+    .featured { display: flex; align-items: center; gap: 25px; margin-bottom: 18px; padding: 26px; border-radius: 24px; }
+    .featured img { width: 128px; height: 128px; flex: 0 0 128px; border-radius: 22px; object-fit: cover; }
+    .featured h2 { margin: 0 0 7px; color: var(--blue); font-size: .83rem; letter-spacing: .11em; text-transform: uppercase; }
+    .featured h3 { margin: 0 0 8px; font-size: 1.5rem; }
+    .featured p { max-width: 640px; margin: 0; color: var(--muted); line-height: 1.65; }
+    .featured-play { display: inline-flex; margin-top: 15px; color: #fff; font-weight: 750; text-decoration: none; }
+
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    .stat { padding: 22px 14px; border-radius: 20px; text-align: center; }
+    .stat strong { display: block; margin-bottom: 5px; color: var(--blue); font-size: 1.65rem; }
+    .stat span { color: var(--muted); font-size: .88rem; }
+
+    dialog {
+      width: min(440px, calc(100% - 28px));
+      padding: 0;
+      border: 1px solid rgba(255, 255, 255, .15);
+      border-radius: 24px;
+      background: #101c31;
+      color: #f8fafc;
+      box-shadow: 0 28px 90px rgba(0, 0, 0, .58);
+    }
+    dialog::backdrop { background: rgba(1, 6, 18, .72); backdrop-filter: blur(7px); }
+    .dialog-content { padding: 26px; }
+    .dialog-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 22px; }
+    .dialog-heading h2 { margin: 0 0 5px; font-size: 1.35rem; }
+    .dialog-heading p { margin: 0; color: var(--muted); font-size: .9rem; }
+    .close-button { width: 36px; height: 36px; border: 1px solid var(--line); border-radius: 11px; background: rgba(255, 255, 255, .06); color: white; font-size: 1.2rem; cursor: pointer; }
+    .edit-avatar { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
+    .edit-avatar img { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; }
+    .edit-avatar label { color: var(--blue); font-size: .9rem; font-weight: 700; cursor: pointer; }
+    .edit-avatar input { display: block; max-width: 230px; margin-top: 7px; color: var(--muted); font-size: .76rem; }
+    .dialog-field label { display: block; margin-bottom: 7px; font-size: .88rem; font-weight: 700; }
+    .dialog-field input { width: 100%; min-height: 46px; padding: 11px 13px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255, 255, 255, .055); color: white; font: inherit; }
+    .dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+    .dialog-actions button { min-height: 42px; padding: 0 15px; border: 1px solid var(--line); border-radius: 11px; background: rgba(255, 255, 255, .06); color: white; font-weight: 700; cursor: pointer; }
+    .dialog-actions .save-button { border: 0; background: linear-gradient(135deg, #2563eb, #0ea5e9); }
+    .profile-message { min-height: 20px; margin: 12px 0 0; color: #fda4af; font-size: .85rem; }
+
+    body.compact-mode .card,
+    body.compact-mode .featured,
+    body.compact-mode .stat { padding: 16px; }
+
+    body.reduce-motion *,
+    body.reduce-motion *::before,
+    body.reduce-motion *::after {
+      scroll-behavior: auto !important;
+      animation-duration: .01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: .01ms !important;
+    }
+
+    @media (max-width: 680px) {
+      body { padding: 18px 15px 104px; }
+      .header { margin-bottom: 19px; }
+      .brand { gap: 10px; }
+      .brand img { width: 48px; height: 48px; border-radius: 14px; }
+      .brand h1 { font-size: 1.12rem; }
+      .brand p { font-size: .77rem; }
+      .profile-button { gap: 8px; padding: 6px 9px 6px 6px; }
+      .profile-button img { width: 39px; height: 39px; }
+      .profile-button strong { max-width: 110px; font-size: .88rem; }
+      .profile-button small { font-size: .75rem; }
+      .hero { border-radius: 24px; }
+      .grid { grid-template-columns: 1fr; gap: 13px; }
+      .featured { align-items: flex-start; gap: 16px; padding: 20px; }
+      .featured img { width: 82px; height: 82px; flex-basis: 82px; border-radius: 17px; }
+      .featured h3 { font-size: 1.2rem; }
+      .featured p { font-size: .9rem; }
+      .stats { grid-template-columns: repeat(2, 1fr); gap: 11px; }
+    }
+
+    @media (max-width: 390px) {
+      .profile-button { padding-right: 7px; }
+      .profile-button strong { max-width: 78px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
+    }
+  </style>
+  <link rel="stylesheet" href="../css/site.css">
+</head>
+<body>
+  <main class="container" id="home">
+    <header class="header">
+      <a class="brand" href="#home" aria-label="Games Lab home" style="color:inherit;text-decoration:none">
+        <img src="../assets/logo.png" alt="">
+        <span>
+          <h1>Games Lab</h1>
+          <p>Play. Create. Discover.</p>
+        </span>
+      </a>
+      <button class="profile-button" id="open-profile" type="button" aria-label="Edit your profile">
+        <img id="profile-avatar" src="../assets/logo.png" alt="">
+        <span>
+          <strong id="profile-name">Loading profile...</strong>
+          <small>View profile</small>
+        </span>
+        <span aria-hidden="true">⌄</span>
+      </button>
+    </header>
+
+    <section class="hero glass" aria-labelledby="welcome-heading">
+      <p class="eyebrow">WELCOME TO YOUR SPACE</p>
+      <h2 id="welcome-heading">Welcome back<span id="welcome-name"></span> 👋</h2>
+      <p>Your home for discovering games, following the latest updates, and keeping up with what’s happening at Games Lab.</p>
+      <div class="hero-actions">
+        <a class="button" href="./games.html">Explore games <span aria-hidden="true">&nbsp;→</span></a>
+        <a class="button secondary" href="#updates">Latest updates</a>
+      </div>
+    </section>
+
+    <div class="grid">
+      <section class="card glass" id="countdown" aria-labelledby="countdown-heading">
+        <h3 id="countdown-heading">🔥 GTA VI countdown</h3>
+        <div id="countdown-clock" class="countdown" aria-live="polite">Loading...</div>
+        <p class="card-note">The countdown is based on the currently announced release date.</p>
+      </section>
+
+      <section class="card glass" id="updates" aria-labelledby="updates-heading">
+        <h3 id="updates-heading">📰 Latest updates</h3>
+        <div class="news-list">
+          <div class="news-item">🎨 A fresh Games Lab look</div>
+          <div class="news-item">🔵 A smoother launcher experience</div>
+          <div class="news-item">🚀 Desktop app development is underway</div>
+        </div>
+      </section>
+    </div>
+
+    <section class="featured glass" id="featured" aria-labelledby="featured-title">
+      <img id="featured-game-icon" src="../assets/logo.png" alt="Featured game icon">
+      <div>
+        <h2 id="featured-title">Featured game</h2>
+        <h3 id="featured-game-title">🦖 Dino Dominion</h3>
+
+        <p id="featured-game-description">Explore a dangerous prehistoric world, evolve your dinosaur, and survive against nature. More details are coming soon.</p>
+        <a class="featured-play" id="featured-game-link" href="./games.html">Browse games →</a>
+      </div>
+    </section>
+
+    <section class="stats" aria-label="Games Lab at a glance">
+      <div class="stat glass"><strong id="game-total">9</strong><span>Games</span></div>
+      <div class="stat glass"><strong>40+</strong><span>Creators</span></div>
+      <div class="stat glass"><strong>1.0.8</strong><span>Version</span></div>
+      <div class="stat glass"><strong>24/7</strong><span>Online</span></div>
+    </section>
+  </main>
+
+  <nav class="dock glass" aria-label="Dashboard navigation">
+    <a class="active" href="./dashboard.html" aria-label="Home" title="Home" aria-current="page">⌂</a>
+    <a href="./games.html" aria-label="Games" title="Games">🎮</a>
+    <a href="./local-games.html" aria-label="Local games" title="Local games">🖥️</a>
+    <a href="./community.html" aria-label="Community" title="Community">👥</a>
+    <a href="./updates.html" aria-label="Updates" title="Updates">◷</a>
+    <a href="./profile.html" aria-label="Profile" title="Profile">👤</a>
+    <a href="./settings.html" aria-label="Settings" title="Settings">⚙️</a>
+    <a href="./tutorial.html" aria-label="Tutorial" title="Tutorial">ⓘ</a>
+  </nav>
+
+  <dialog id="profile-dialog" aria-labelledby="profile-dialog-title">
+    <form class="dialog-content" id="profile-form">
+      <div class="dialog-heading">
+        <div>
+          <h2 id="profile-dialog-title">Your profile</h2>
+          <p>Personalize how you appear in Games Lab.</p>
+        </div>
+        <button class="close-button" id="close-profile" type="button" aria-label="Close">×</button>
+      </div>
+      <div class="edit-avatar">
+        <img id="edit-avatar-preview" src="../assets/logo.png" alt="Profile photo preview">
+        <label for="profile-avatar-file">Change profile photo
+          <input id="profile-avatar-file" type="file" accept="image/*">
+        </label>
+      </div>
+      <div class="dialog-field">
+        <label for="edit-name">Display name</label>
+        <input id="edit-name" type="text" maxlength="60" required autocomplete="name">
+      </div>
+      <p class="profile-message" id="profile-message" role="status" aria-live="polite"></p>
+      <div class="dialog-actions">
+        <button id="cancel-profile" type="button">Cancel</button>
+        <button class="save-button" id="save-profile" type="submit">Save changes</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="../js/desktop.js"></script>
+  <script type="module" src="../js/app.js"></script>
+  <script type="module">
+    import { onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+    import { auth } from "../js/firebase.js";
+    import { games } from "../js/games-data.js";
+    import { getAvatar, makeAvatar, saveAvatar } from "../js/profile.js";
+
+    document.getElementById("game-total").textContent = String(games.length);
+    const featuredGame = games.find((game) => game.featured) || games[0];
+    if (featuredGame) {
+      document.getElementById("featured-game-title").textContent = `${featuredGame.emoji || "🎮"} ${featuredGame.title}`;
+      document.getElementById("featured-game-description").textContent = featuredGame.description;
+      if (featuredGame.icon) {
+        document.getElementById("featured-game-icon").src = featuredGame.icon;
+      }
+      if (featuredGame.folder) {
+        const gameLink = document.getElementById("featured-game-link");
+        gameLink.href = `${featuredGame.folder.replace(/\/+$/, "")}/index.html`;
+        gameLink.textContent = "Play featured game →";
+      }
+    }
+
+    const profileDialog = document.getElementById("profile-dialog");
+    const profileName = document.getElementById("profile-name");
+    const welcomeName = document.getElementById("welcome-name");
+    const profileAvatar = document.getElementById("profile-avatar");
+    const avatarPreview = document.getElementById("edit-avatar-preview");
+    const profileMessage = document.getElementById("profile-message");
+    const saveButton = document.getElementById("save-profile");
+    let activeUser = null;
+    let pendingAvatar = "";
+
+    function renderProfile(user) {
+      const name = user.displayName?.trim() || user.email?.split("@")[0] || "Player";
+      const avatar = getAvatar(user.uid) || user.photoURL || "../assets/logo.png";
+      profileName.textContent = name;
+      welcomeName.textContent = `, ${name}`;
+      profileAvatar.src = avatar;
+      avatarPreview.src = avatar;
+      document.getElementById("edit-name").value = name;
+    }
+
+    onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        window.location.replace("./login.html");
+        return;
+      }
+      activeUser = user;
+      renderProfile(user);
+    });
+
+    function openProfile() {
+      if (!activeUser) return;
+      pendingAvatar = "";
+      profileMessage.textContent = "";
+      renderProfile(activeUser);
+      profileDialog.showModal();
+    }
+
+    document.getElementById("open-profile").addEventListener("click", openProfile);
+    document.getElementById("close-profile").addEventListener("click", () => profileDialog.close());
+    document.getElementById("cancel-profile").addEventListener("click", () => profileDialog.close());
+    profileDialog.addEventListener("click", (event) => {
+      if (event.target === profileDialog) profileDialog.close();
+    });
+
+    document.getElementById("profile-avatar-file").addEventListener("change", async (event) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      profileMessage.textContent = "";
+      try {
+        pendingAvatar = await makeAvatar(file);
+        avatarPreview.src = pendingAvatar;
+      } catch (error) {
+        event.target.value = "";
+        profileMessage.textContent = error.message;
+      }
+    });
+
+    document.getElementById("profile-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!activeUser) return;
+      const name = document.getElementById("edit-name").value.trim();
+      if (!name) {
+        profileMessage.textContent = "Enter a display name.";
+        return;
+      }
+      saveButton.disabled = true;
+      saveButton.textContent = "Saving...";
+      profileMessage.textContent = "";
+      try {
+        if (pendingAvatar) saveAvatar(activeUser.uid, pendingAvatar);
+        await updateProfile(activeUser, { displayName: name });
+        renderProfile(activeUser);
+        profileDialog.close();
+      } catch (error) {
+        profileMessage.textContent = error.message || "Your profile could not be saved. Please try again.";
+      } finally {
+        saveButton.disabled = false;
+        saveButton.textContent = "Save changes";
+      }
+    });
+
+    const targetDate = new Date("2027-05-26T00:00:00").getTime();
+    const countdown = document.getElementById("countdown-clock");
+    function updateCountdown() {
+      const distance = targetDate - Date.now();
+      if (distance <= 0) {
+        countdown.textContent = "🎉 OUT NOW";
+        return;
+      }
+      const days = Math.floor(distance / 86400000);
+      const hours = Math.floor((distance % 86400000) / 3600000);
+      const minutes = Math.floor((distance % 3600000) / 60000);
+      const seconds = Math.floor((distance % 60000) / 1000);
+      countdown.textContent = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+    }
+    updateCountdown();
+    window.setInterval(updateCountdown, 1000);
+  </script>
+</body>
+</html>

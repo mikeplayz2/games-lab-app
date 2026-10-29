@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#18162d">
+  <title>Pocket Planet | Games Lab</title>
+  <link rel="stylesheet" href="../../css/mini-games.css">
+  <style>
+    :root { --game-accent: #d3a6ff; }
+    .planet-board { display: grid; width: min(100%, 470px); grid-template-columns: repeat(3, 1fr); gap: 9px; margin: 0 auto; padding: 14px; border: 1px solid rgba(211,166,255,.2); border-radius: 22px; background: radial-gradient(circle at center, #39446b, #222742 70%); }
+    .planet-tile { display: grid; min-height: 100px; place-content: center; gap: 5px; border: 1px solid rgba(255,255,255,.1); border-radius: 16px; background: rgba(15,24,44,.68); color: white; cursor: pointer; transition: transform .16s, border-color .16s; }
+    .planet-tile:hover:not(:disabled) { transform: translateY(-2px); border-color: var(--game-accent); }
+    .planet-tile:disabled { cursor: default; }
+    .planet-tile .building-icon { font-size: 2rem; }
+    .planet-tile small { color: #c5cce0; font-size: .72rem; }
+    .resource-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 4px 0 14px; }
+    .resource { padding: 7px 10px; border: 1px solid var(--line); border-radius: 999px; background: rgba(255,255,255,.045); color: #e7e8f9; font-size: .8rem; }
+    .build-options { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 12px 0; }
+    .build-options button { min-height: 38px; padding: 0 11px; border: 1px solid var(--line); border-radius: 10px; background: rgba(255,255,255,.06); color: white; cursor: pointer; }
+    .build-options button[aria-pressed="true"] { border-color: var(--game-accent); background: rgba(211,166,255,.16); }
+    @media (max-width: 430px) { .planet-tile { min-height: 78px; } .planet-board { gap: 6px; padding: 9px; } }
+  </style>
+</head>
+<body>
+  <main class="game-page">
+    <header class="game-topbar">
+      <a class="game-back" href="../../pages/games.html">← Back to games</a>
+      <span class="game-brand"><img src="../../assets/logo.png" alt=""> Games Lab</span>
+    </header>
+    <section class="game-intro">
+      <span class="game-icon" aria-hidden="true">🪐</span>
+      <p class="game-eyebrow">TINY PLANET · BIG PLANS</p>
+      <h1>Pocket Planet</h1>
+      <p>Balance your resources and build a welcoming home for the first settlers.</p>
+    </section>
+    <section class="game-panel" aria-label="Pocket Planet strategy game">
+      <div class="game-stats" aria-live="polite">
+        <div class="game-stat"><strong id="population">2</strong><span>SETTLERS</span></div>
+        <div class="game-stat"><strong id="season">1 / 12</strong><span>YEAR</span></div>
+        <div class="game-stat"><strong id="buildings">0 / 9</strong><span>BUILDINGS</span></div>
+      </div>
+      <div class="resource-row" aria-label="Planet resources">
+        <span class="resource">⚡ <b id="energy">4</b> energy</span>
+        <span class="resource">💧 <b id="water">4</b> water</span>
+        <span class="resource">🌾 <b id="food">4</b> food</span>
+        <span class="resource">🪙 <b id="credits">10</b> credits</span>
+      </div>
+      <p class="game-message" id="message" role="status">Build a farm and a solar array to get your colony started.</p>
+      <div class="build-options" role="group" aria-label="Choose a building">
+        <button type="button" data-building="solar" aria-pressed="true">☀️ Solar · 2 credits</button>
+        <button type="button" data-building="farm" aria-pressed="false">🌾 Farm · 2 credits</button>
+        <button type="button" data-building="pump" aria-pressed="false">💧 Pump · 3 credits</button>
+        <button type="button" data-building="habitat" aria-pressed="false">🏠 Habitat · 3 credits</button>
+      </div>
+      <div class="planet-board" id="board" aria-label="Planet building plots"></div>
+      <div class="game-controls">
+        <button class="primary" id="end-turn" type="button">End year · produce</button>
+        <button id="restart" type="button">New planet</button>
+        <a href="../../pages/games.html">Game library</a>
+      </div>
+      <p class="game-instructions">Choose a building, then tap an empty plot. Farms grow food, solar arrays make power, pumps collect water, and habitats can grow your population. End each year to produce and feed your settlers.</p>
+    </section>
+    <p class="game-footer">Pocket Planet · A new colony begins with one small step.</p>
+  </main>
+  <script>
+    const board = document.getElementById("board");
+    const message = document.getElementById("message");
+    const buildingTypes = {
+      solar: { name: "Solar array", icon: "☀️", cost: 2 },
+      farm: { name: "Moon farm", icon: "🌾", cost: 2 },
+      pump: { name: "Ice pump", icon: "💧", cost: 3 },
+      habitat: { name: "Habitat", icon: "🏠", cost: 3 }
+    };
+    const state = { plots: Array(9).fill(null), credits: 10, energy: 4, water: 4, food: 4, population: 2, year: 1, selected: "solar", finished: false };
+
+    function render() {
+      for (const resource of ["credits", "energy", "water", "food", "population"]) {
+        document.getElementById(resource).textContent = String(state[resource]);
+      }
+      document.getElementById("season").textContent = `${Math.min(state.year, 12)} / 12`;
+      document.getElementById("buildings").textContent = `${state.plots.filter(Boolean).length} / 9`;
+      document.getElementById("end-turn").disabled = state.finished;
+      document.querySelectorAll("[data-building]").forEach((button) => {
+        button.setAttribute("aria-pressed", String(button.dataset.building === state.selected));
+      });
+      board.replaceChildren(...state.plots.map((building, index) => {
+        const plot = document.createElement("button");
+        plot.className = "planet-tile";
+        plot.type = "button";
+        plot.disabled = state.finished || Boolean(building);
+        plot.setAttribute("aria-label", building ? `${buildingTypes[building].name}, plot ${index + 1}` : `Build ${buildingTypes[state.selected].name} on plot ${index + 1}`);
+        const icon = document.createElement("span");
+        icon.className = "building-icon";
+        icon.textContent = building ? buildingTypes[building].icon : "＋";
+        const label = document.createElement("small");
+        label.textContent = building ? buildingTypes[building].name : "Build here";
+        plot.append(icon, label);
+        plot.addEventListener("click", () => build(index));
+        return plot;
+      }));
+    }
+
+    function build(index) {
+      if (state.finished || state.plots[index]) return;
+      const selected = buildingTypes[state.selected];
+      if (state.credits < selected.cost) {
+        message.textContent = `You need ${selected.cost} credits to build a ${selected.name}.`;
+        return;
+      }
+      if (state.selected === "habitat" && state.energy < 1) {
+        message.textContent = "A habitat needs at least 1 energy to start up.";
+        return;
+      }
+      state.credits -= selected.cost;
+      if (state.selected === "habitat") state.energy -= 1;
+      state.plots[index] = state.selected;
+      message.textContent = `${selected.name} built! End the year to produce resources.`;
+      render();
+    }
+
+    function endYear() {
+      if (state.finished) return;
+      const buildings = state.plots.filter(Boolean);
+      state.energy += buildings.filter((name) => name === "solar").length * 3;
+      state.food += buildings.filter((name) => name === "farm").length * 2;
+      state.water += buildings.filter((name) => name === "pump").length * 2;
+      const livingCost = state.population;
+      const fed = Math.min(state.food, livingCost);
+      const watered = Math.min(state.water, livingCost);
+      state.food -= fed;
+      state.water -= watered;
+      if (fed < livingCost || watered < livingCost) {
+        state.population = Math.max(1, state.population - 1);
+        message.textContent = "Supplies ran short. Your colony lost a settler; build farms or pumps.";
+      } else {
+        const spareSupplies = Math.min(state.food, state.water);
+        const habitatCount = buildings.filter((name) => name === "habitat").length;
+        if (habitatCount && state.energy >= habitatCount && spareSupplies > 0) {
+          const growth = Math.min(habitatCount, spareSupplies);
+          state.population += growth;
+          state.food -= growth;
+          state.water -= growth;
+          state.energy -= growth;
+          message.textContent = `Your colony grew by ${growth} ${growth === 1 ? "settler" : "settlers"} this year.`;
+        } else {
+          message.textContent = "A year passes. Manage food and water to help your colony grow.";
+        }
+      }
+      state.credits += 2 + buildings.length;
+      state.year += 1;
+      if (state.year > 12) {
+        state.finished = true;
+        const thriving = state.population >= 8 && buildings.length >= 5;
+        message.textContent = thriving
+          ? `Thriving planet! ${state.population} settlers made a home among ${buildings.length} buildings.`
+          : `Year 12 complete: ${state.population} settlers and ${buildings.length} buildings. Restart and try to grow further!`;
+      }
+      render();
+    }
+
+    document.querySelectorAll("[data-building]").forEach((button) => button.addEventListener("click", () => {
+      state.selected = button.dataset.building;
+      const choice = buildingTypes[state.selected];
+      message.textContent = `${choice.name} selected. Tap an empty plot to build.`;
+      render();
+    }));
+    document.getElementById("end-turn").addEventListener("click", endYear);
+    document.getElementById("restart").addEventListener("click", () => window.location.reload());
+    render();
+  </script>
+</body>
+</html>

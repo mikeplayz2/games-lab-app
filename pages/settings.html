@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#071226">
+  <title>Settings | Games Lab</title>
+  <link rel="stylesheet" href="../css/site.css">
+  <style>
+    .settings-list { display: grid; gap: 12px; }
+    .setting-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 21px 23px; border-radius: 18px; }
+    .setting-copy strong { display: block; margin-bottom: 5px; }
+    .setting-copy span { color: var(--muted); font-size: .88rem; line-height: 1.5; }
+    .setting-control select { min-width: 145px; min-height: 42px; padding: 0 12px; border: 1px solid var(--line); border-radius: 11px; background: #101c31; color: white; }
+    .switch { position: relative; display: inline-flex; width: 52px; height: 30px; flex: 0 0 52px; align-items: center; }
+    .switch input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+    .switch-track { width: 52px; height: 30px; border: 1px solid var(--line); border-radius: 99px; background: rgba(255,255,255,.12); cursor: pointer; transition: background .2s; }
+    .switch-track::after { display: block; width: 22px; height: 22px; margin: 3px; border-radius: 50%; background: white; content: ""; transition: transform .2s; }
+    .switch input:checked + .switch-track { background: var(--accent); }
+    .switch input:checked + .switch-track::after { transform: translateX(22px); }
+    .switch input:focus-visible + .switch-track { outline: 3px solid var(--blue); outline-offset: 3px; }
+    .settings-message { min-height: 22px; margin: 14px 0 0; color: #86efac; font-size: .88rem; }
+    .settings-note { margin-top: 20px; padding: 20px 22px; border-radius: 18px; color: var(--muted); font-size: .9rem; line-height: 1.65; }
+    .settings-note strong { color: #dce6f5; }
+    .desktop-update-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 21px; }
+    .desktop-update-tools button[hidden] { display: none; }
+    .desktop-update-status { flex: 1 1 220px; min-width: 0; margin: 0; color: var(--muted); font-size: .88rem; overflow-wrap: anywhere; }
+    @media (max-width: 540px) {
+      .setting-row { align-items: flex-start; }
+      .setting-copy { max-width: 70%; }
+      .setting-control select { min-width: 118px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <header class="app-header">
+      <a class="brand" href="./dashboard.html">
+        <img src="../assets/logo.png" alt="">
+        <span><h1>Games Lab</h1><p>Play. Create. Discover.</p></span>
+      </a>
+      <a class="user-chip" href="./profile.html" aria-label="Open your profile">
+        <img data-user-avatar src="../assets/logo.png" alt="">
+        <span><strong data-user-name>Loading...</strong><small>Player profile</small></span>
+      </a>
+    </header>
+
+    <section class="page-hero">
+      <p class="eyebrow">MAKE IT YOURS</p>
+      <h2>Your lab.<br>Your settings.</h2>
+      <p>Fine-tune the look and feel of Games Lab. Your preferences are saved in this browser.</p>
+    </section>
+
+    <form id="settings-form" aria-labelledby="settings-heading">
+      <div class="section-heading"><div><h2 id="settings-heading">Appearance</h2><p>A few little touches to make it feel right.</p></div></div>
+      <div class="settings-list">
+        <div class="setting-row glass">
+          <div class="setting-copy"><strong>Accent colour</strong><span>Choose the glow and highlight colour.</span></div>
+          <div class="setting-control">
+            <label class="sr-only" for="accent-setting">Accent colour</label>
+            <select id="accent-setting" name="accent">
+              <option value="blue">Electric blue</option>
+              <option value="violet">Cosmic violet</option>
+              <option value="pink">Arcade pink</option>
+              <option value="green">Pixel green</option>
+            </select>
+          </div>
+        </div>
+        <label class="setting-row glass" for="compact-setting">
+          <span class="setting-copy"><strong>Compact layout</strong><span>Reduce the spacing around content cards.</span></span>
+          <span class="switch"><input id="compact-setting" type="checkbox" name="compact"><span class="switch-track"></span></span>
+        </label>
+        <label class="setting-row glass" for="motion-setting">
+          <span class="setting-copy"><strong>Reduce motion</strong><span>Keep page animations and transitions to a minimum.</span></span>
+          <span class="switch"><input id="motion-setting" type="checkbox" name="reduceMotion"><span class="switch-track"></span></span>
+        </label>
+      </div>
+      <p class="settings-message" id="settings-message" role="status" aria-live="polite"></p>
+    </form>
+
+    <div class="settings-note glass"><strong>Good to know:</strong> Your account details are managed from your profile. These appearance preferences stay on this device and browser.</div>
+    <section class="settings-note glass" aria-labelledby="desktop-update-title">
+      <strong id="desktop-update-title">Games Lab app updates</strong>
+      <p>Check whether a newer desktop app is available. You’ll be asked before it downloads or installs.</p>
+      <div class="desktop-update-tools">
+        <button class="button secondary" id="manual-update-check" data-check-for-updates type="button" hidden>Check for updates</button>
+        <p class="desktop-update-status" id="desktop-update-status" role="status" aria-live="polite"></p>
+      </div>
+    </section>
+  </main>
+  <nav class="dock glass" aria-label="Main navigation">
+    <a href="./dashboard.html" aria-label="Home" title="Home">⌂</a>
+    <a href="./games.html" aria-label="Games" title="Games">🎮</a>
+    <a href="./local-games.html" aria-label="Local games" title="Local games">🖥️</a>
+    <a href="./community.html" aria-label="Community" title="Community">👥</a>
+    <a href="./updates.html" aria-label="Updates" title="Updates">◷</a>
+    <a href="./profile.html" aria-label="Profile" title="Profile">👤</a>
+    <a class="active" href="./settings.html" aria-label="Settings" title="Settings" aria-current="page">⚙️</a>
+    <a href="./tutorial.html" aria-label="Tutorial" title="Tutorial">ⓘ</a>
+  </nav>
+  <script src="../js/desktop.js"></script>
+  <script type="module" src="../js/app.js"></script>
+</body>
+</html>

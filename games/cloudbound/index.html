@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#12233d">
+  <title>Cloudbound | Games Lab</title>
+  <link rel="stylesheet" href="../../css/mini-games.css">
+  <style>:root { --game-accent: #8ed3ff; } .flight-controls { display: grid; grid-template-columns: repeat(3, 54px); gap: 7px; justify-content: center; margin-top: 12px; } .flight-controls button { min-height: 45px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255,255,255,.09); color: white; font-size: 1.15rem; touch-action: none; user-select: none; } .flight-controls .up { grid-column: 2; } @media (pointer:fine) { .flight-controls { display: none; } }</style>
+</head>
+<body>
+  <main class="game-page">
+    <header class="game-topbar">
+      <a class="game-back" href="../../pages/games.html">← Back to games</a>
+      <span class="game-brand"><img src="../../assets/logo.png" alt=""> Games Lab</span>
+    </header>
+    <section class="game-intro">
+      <span class="game-icon" aria-hidden="true">☁️</span>
+      <p class="game-eyebrow">SKYSHIP SURVIVAL</p>
+      <h1>Cloudbound</h1>
+      <p>Chart the clouds, gather wind crystals, and steer clear of the storm.</p>
+    </section>
+    <section class="game-panel" aria-label="Cloudbound skyship game">
+      <div class="game-stats" aria-live="polite">
+        <div class="game-stat"><strong id="crystals">0</strong><span>CRYSTALS</span></div>
+        <div class="game-stat"><strong id="hull">3</strong><span>HULL</span></div>
+        <div class="game-stat"><strong id="best">0</strong><span>BEST</span></div>
+      </div>
+      <p class="game-message" id="message" role="status">Ready to sail above the clouds?</p>
+      <canvas class="game-canvas" id="sky" width="480" height="520" aria-label="Skyship flight. Use arrow keys or WASD to steer."></canvas>
+      <div class="flight-controls" aria-label="Touch flight controls">
+        <button class="up" data-direction="up" type="button" aria-label="Fly up">↑</button>
+        <button data-direction="left" type="button" aria-label="Fly left">←</button>
+        <button data-direction="down" type="button" aria-label="Fly down">↓</button>
+        <button data-direction="right" type="button" aria-label="Fly right">→</button>
+      </div>
+      <div class="game-controls">
+        <button class="primary" id="start" type="button">Set sail</button>
+        <a href="../../pages/games.html">Game library</a>
+      </div>
+      <p class="game-instructions">Steer with ← → ↑ ↓ or WASD. Hold the touch controls on mobile. Collect ✦ crystals and avoid storm clouds.</p>
+    </section>
+    <p class="game-footer">Cloudbound · Your best voyage is saved on this device.</p>
+  </main>
+  <script>
+    const canvas = document.getElementById("sky");
+    const ctx = canvas.getContext("2d");
+    const message = document.getElementById("message");
+    const startButton = document.getElementById("start");
+    const bestKey = "games-lab-cloudbound-best";
+    const held = { up: false, down: false, left: false, right: false };
+    const clouds = Array.from({ length: 28 }, () => ({ x: Math.random() * 520 - 20, y: Math.random() * 520, size: 12 + Math.random() * 22, speed: 18 + Math.random() * 28 }));
+    const ship = { x: 240, y: 400, radius: 16 };
+    let hazards = [];
+    let crystals = [];
+    let score = 0;
+    let hull = 3;
+    let best = 0;
+    let spawn = 0;
+    let lastFrame = 0;
+    let invulnerableUntil = 0;
+    let running = false;
+    let ended = false;
+    let animationId = 0;
+
+    function readBest() {
+      try { return Number(localStorage.getItem(bestKey)) || 0; }
+      catch (error) { console.warn("Could not read the saved Cloudbound score.", error); return 0; }
+    }
+
+    function updateStats() {
+      document.getElementById("crystals").textContent = String(score);
+      document.getElementById("hull").textContent = String(hull);
+      document.getElementById("best").textContent = String(best);
+    }
+
+    function draw() {
+      const sky = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      sky.addColorStop(0, "#183858");
+      sky.addColorStop(1, "#101c39");
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      for (const cloud of clouds) {
+        ctx.globalAlpha = .25;
+        ctx.fillStyle = "#d9efff";
+        ctx.beginPath();
+        ctx.ellipse(cloud.x, cloud.y, cloud.size * 1.7, cloud.size * .62, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      for (const item of crystals) {
+        ctx.save();
+        ctx.translate(item.x, item.y);
+        ctx.rotate(Math.PI / 4);
+        ctx.fillStyle = "#b5fff3";
+        ctx.shadowColor = "#6ef5db";
+        ctx.shadowBlur = 14;
+        ctx.fillRect(-7, -7, 14, 14);
+        ctx.restore();
+      }
+      for (const storm of hazards) {
+        ctx.fillStyle = "#5e6684";
+        ctx.shadowColor = "#bd9bff";
+        ctx.shadowBlur = 13;
+        ctx.beginPath();
+        ctx.arc(storm.x - 10, storm.y + 3, storm.radius * .72, Math.PI, 0);
+        ctx.arc(storm.x + 7, storm.y, storm.radius, Math.PI, 0);
+        ctx.arc(storm.x + 22, storm.y + 5, storm.radius * .65, Math.PI, 0);
+        ctx.lineTo(storm.x + 21, storm.y + 12);
+        ctx.lineTo(storm.x - 10, storm.y + 12);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.save();
+      ctx.translate(ship.x, ship.y);
+      if (performance.now() < invulnerableUntil && Math.floor(performance.now() / 90) % 2 === 0) ctx.globalAlpha = .32;
+      ctx.shadowColor = "#ffe5a7";
+      ctx.shadowBlur = 18;
+      ctx.fillStyle = "#ffcf83";
+      ctx.beginPath();
+      ctx.moveTo(0, -18);
+      ctx.lineTo(17, 15);
+      ctx.lineTo(0, 9);
+      ctx.lineTo(-17, 15);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = "#fff8d8";
+      ctx.fillRect(-3, -6, 6, 12);
+      ctx.restore();
+      if (!running) {
+        ctx.fillStyle = "rgba(8,15,32,.72)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#fff";
+        ctx.font = "700 27px Segoe UI";
+        ctx.fillText(ended ? "Voyage complete" : "Ready to set sail?", 240, 240);
+        ctx.fillStyle = "#c8d8ec";
+        ctx.font = "16px Segoe UI";
+        ctx.fillText(ended ? `${score} wind crystals collected` : "Collect crystals and avoid the storm", 240, 271);
+      }
+    }
+
+    function overlaps(object, radius) {
+      return Math.hypot(ship.x - object.x, ship.y - object.y) < ship.radius + radius;
+    }
+
+    function finish() {
+      running = false;
+      ended = true;
+      for (const direction of Object.keys(held)) held[direction] = false;
+      startButton.textContent = "Sail again";
+      if (score > best) {
+        best = score;
+        try { localStorage.setItem(bestKey, String(best)); }
+        catch (error) { console.warn("Could not save the Cloudbound score.", error); }
+      }
+      message.textContent = `Your voyage brought home ${score} wind crystals.`;
+      updateStats();
+      draw();
+    }
+
+    function update(delta, now) {
+      const speed = 245 * delta;
+      ship.x = Math.max(20, Math.min(canvas.width - 20, ship.x + (Number(held.right) - Number(held.left)) * speed));
+      ship.y = Math.max(20, Math.min(canvas.height - 20, ship.y + (Number(held.down) - Number(held.up)) * speed));
+      for (const cloud of clouds) {
+        cloud.y += cloud.speed * delta;
+        if (cloud.y > canvas.height + cloud.size) { cloud.y = -cloud.size; cloud.x = Math.random() * canvas.width; }
+      }
+      spawn += delta;
+      if (spawn > .72) {
+        spawn = 0;
+        const fallSpeed = 100 + Math.min(score, 80) * 2;
+        hazards.push({ x: 25 + Math.random() * (canvas.width - 50), y: -25, radius: 15 + Math.random() * 9, speed: fallSpeed + Math.random() * 55 });
+        if (Math.random() < .74) crystals.push({ x: 20 + Math.random() * (canvas.width - 40), y: -18, speed: fallSpeed * .78 });
+      }
+      for (const storm of hazards) storm.y += storm.speed * delta;
+      for (const item of crystals) item.y += item.speed * delta;
+      hazards = hazards.filter((storm) => storm.y < canvas.height + 35);
+      crystals = crystals.filter((item) => item.y < canvas.height + 20);
+      if (now > invulnerableUntil) {
+        const hit = hazards.findIndex((storm) => overlaps(storm, storm.radius));
+        if (hit !== -1) {
+          hazards.splice(hit, 1);
+          hull -= 1;
+          invulnerableUntil = now + 1100;
+          if (hull <= 0) { finish(); return; }
+        }
+      }
+      crystals = crystals.filter((item) => {
+        if (!overlaps(item, 9)) return true;
+        score += 1;
+        return false;
+      });
+      updateStats();
+    }
+
+    function frame(now) {
+      if (!running) return;
+      const delta = Math.min((now - lastFrame) / 1000, .05);
+      lastFrame = now;
+      update(delta, now);
+      draw();
+      if (running) animationId = requestAnimationFrame(frame);
+    }
+
+    function startVoyage() {
+      cancelAnimationFrame(animationId);
+      hazards = [];
+      crystals = [];
+      score = 0;
+      hull = 3;
+      spawn = 0;
+      invulnerableUntil = 0;
+      ship.x = canvas.width / 2;
+      ship.y = canvas.height - 70;
+      ended = false;
+      running = true;
+      lastFrame = performance.now();
+      startButton.textContent = "In flight";
+      message.textContent = "Steady course! Watch for storm clouds.";
+      updateStats();
+      animationId = requestAnimationFrame(frame);
+    }
+
+    function setDirection(key, value, event) {
+      const map = { arrowup: "up", w: "up", arrowdown: "down", s: "down", arrowleft: "left", a: "left", arrowright: "right", d: "right" };
+      const direction = map[key.toLowerCase()];
+      if (direction) { held[direction] = value; event.preventDefault(); }
+    }
+
+    document.addEventListener("keydown", (event) => setDirection(event.key, true, event));
+    document.addEventListener("keyup", (event) => setDirection(event.key, false, event));
+    window.addEventListener("blur", () => { for (const direction of Object.keys(held)) held[direction] = false; });
+    document.querySelectorAll("[data-direction]").forEach((button) => {
+      const direction = button.dataset.direction;
+      button.addEventListener("pointerdown", (event) => { event.preventDefault(); held[direction] = true; button.setPointerCapture(event.pointerId); });
+      ["pointerup", "pointercancel", "lostpointercapture"].forEach((name) => button.addEventListener(name, () => { held[direction] = false; }));
+    });
+    startButton.addEventListener("click", startVoyage);
+    best = readBest();
+    updateStats();
+    draw();
+  </script>
+</body>
+</html>

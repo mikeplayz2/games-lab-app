@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#071226">
+  <title>Your profile | Games Lab</title>
+  <link rel="stylesheet" href="../css/site.css">
+  <style>
+    .profile-layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 18px; align-items: start; }
+    .profile-editor { padding: clamp(22px, 5vw, 36px); border-radius: 24px; }
+    .profile-photo-row { display: flex; align-items: center; gap: 19px; margin-bottom: 27px; }
+    .large-avatar { width: 96px; height: 96px; border: 3px solid rgba(147,197,253,.45); border-radius: 50%; object-fit: cover; box-shadow: 0 0 34px var(--accent-glow); }
+    .photo-control label { color: var(--blue); font-weight: 750; cursor: pointer; }
+    .photo-control input { display: block; max-width: 240px; margin-top: 9px; color: var(--muted); font-size: .79rem; }
+    .photo-control p { margin: 8px 0 0; color: var(--muted); font-size: .82rem; }
+    .field { margin-bottom: 17px; }
+    .field label { display: block; margin-bottom: 8px; font-size: .9rem; font-weight: 750; }
+    .field input { width: 100%; min-height: 48px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255,255,255,.055); color: white; }
+    .field input[readonly] { color: var(--muted); }
+    .profile-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 11px; margin-top: 21px; }
+    .form-message { min-height: 20px; margin: 13px 0 0; color: #86efac; font-size: .87rem; }
+    .form-message.error { color: #fda4af; }
+    .profile-aside { padding: 24px; border-radius: 22px; }
+    .profile-aside h3 { margin: 0 0 9px; }
+    .profile-aside p { margin: 0; color: var(--muted); line-height: 1.65; }
+    .profile-aside button { margin-top: 20px; border-color: rgba(251,113,133,.25); color: #fda4af; }
+    @media (max-width: 760px) { .profile-layout { grid-template-columns: 1fr; } }
+    @media (max-width: 430px) { .profile-photo-row { align-items: flex-start; flex-direction: column; } }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <header class="app-header">
+      <a class="brand" href="./dashboard.html">
+        <img src="../assets/logo.png" alt="">
+        <span><h1>Games Lab</h1><p>Play. Create. Discover.</p></span>
+      </a>
+      <a class="user-chip" href="./profile.html" aria-label="Your profile">
+        <img data-user-avatar src="../assets/logo.png" alt="">
+        <span><strong data-user-name>Loading...</strong><small>Player profile</small></span>
+      </a>
+    </header>
+
+    <section class="page-hero">
+      <p class="eyebrow">PLAYER ONE</p>
+      <h2>Your corner<br>of the lab.</h2>
+      <p>Make it yours. Your name and avatar help your Games Lab profile feel like home.</p>
+    </section>
+
+    <div class="profile-layout">
+      <form class="profile-editor glass" id="profile-form">
+        <div class="section-heading" style="margin-top:0"><div><h2>Profile details</h2><p>Update how you show up around here.</p></div></div>
+        <div class="profile-photo-row">
+          <img class="large-avatar" id="profile-preview" src="../assets/logo.png" alt="Your profile photo">
+          <div class="photo-control">
+            <label for="profile-photo">Change profile photo</label>
+            <input id="profile-photo" type="file" accept="image/*">
+            <p>Square crop · Up to 5 MB · Saved in this browser</p>
+          </div>
+        </div>
+        <div class="field">
+          <label for="display-name">Display name</label>
+          <input id="display-name" type="text" maxlength="60" required autocomplete="name" placeholder="Your name">
+        </div>
+        <div class="field">
+          <label for="email-address">Email address</label>
+          <input id="email-address" type="email" readonly>
+        </div>
+        <div class="profile-actions">
+          <button class="button" id="save-profile" type="submit">Save changes</button>
+          <a class="button secondary" href="./settings.html">Preferences</a>
+        </div>
+        <p class="form-message" id="profile-message" role="status" aria-live="polite"></p>
+      </form>
+
+      <aside class="profile-aside glass">
+        <h3>Ready to log off?</h3>
+        <p>Your profile is saved. You can sign back in any time to pick up where you left off.</p>
+        <button class="button secondary" type="button" data-sign-out>Sign out</button>
+        <p class="form-message error" id="signout-message" role="status" aria-live="polite"></p>
+      </aside>
+    </div>
+  </main>
+  <nav class="dock glass" aria-label="Main navigation">
+    <a href="./dashboard.html" aria-label="Home" title="Home">⌂</a>
+    <a href="./games.html" aria-label="Games" title="Games">🎮</a>
+    <a href="./local-games.html" aria-label="Local games" title="Local games">🖥️</a>
+    <a href="./community.html" aria-label="Community" title="Community">👥</a>
+    <a href="./updates.html" aria-label="Updates" title="Updates">◷</a>
+    <a class="active" href="./profile.html" aria-label="Profile" title="Profile" aria-current="page">👤</a>
+    <a href="./settings.html" aria-label="Settings" title="Settings">⚙️</a>
+    <a href="./tutorial.html" aria-label="Tutorial" title="Tutorial">ⓘ</a>
+  </nav>
+  <script src="../js/desktop.js"></script>
+  <script type="module" src="../js/app.js"></script>
+  <script type="module" src="../js/profile-page.js"></script>
+</body>
+</html>

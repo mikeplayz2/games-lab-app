@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="sky" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#153d45"/>
+      <stop offset="1" stop-color="#38b27b"/>
+    </linearGradient>
+    <linearGradient id="dino" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#c5f28c"/>
+      <stop offset="1" stop-color="#59c582"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="54" fill="url(#sky)"/>
+  <circle cx="193" cy="61" r="25" fill="#ffe89a"/>
+  <path d="M0 190c48-35 87-25 128-7 43 19 83 11 128-14v87H0z" fill="#174d43"/>
+  <path d="M58 144c0-15 12-27 27-27h28V94c0-17 14-31 31-31h21c19 0 34 15 34 34v12h17c10 0 18 8 18 18v12h-25l-13 22h-22v34h-27v-32h-35v32H84v-33c-15-3-26-16-26-32z" fill="url(#dino)"/>
+  <path d="M146 96l-17-20 1 36M167 95l-7-25 22 21" fill="none" stroke="#367e58" stroke-linecap="round" stroke-linejoin="round" stroke-width="9"/>
+  <circle cx="181" cy="94" r="5" fill="#123d39"/>
+  <path d="M206 116l16-9-3 21" fill="#b9e978"/>
+  <path d="M40 211l16-23 15 23zm150 2l13-20 16 20z" fill="#83d56c" opacity=".8"/>
+</svg>

@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#10172e">
+  <title>Pixel Pairs | Games Lab</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: "Segoe UI", Arial, sans-serif;
+      color: #f8fafc;
+      background: #10172e;
+      --muted: #a7b5ca;
+      --mint: #72e0cb;
+    }
+    * { box-sizing: border-box; }
+    body {
+      min-height: 100vh;
+      margin: 0;
+      padding: 22px;
+      background:
+        radial-gradient(ellipse at 50% 0, rgba(82, 212, 194, .2), transparent 42%),
+        linear-gradient(155deg, #10172e, #171c37 65%, #202344);
+    }
+    button, a { font: inherit; }
+    button:focus-visible, a:focus-visible { outline: 3px solid var(--mint); outline-offset: 3px; }
+    .page { width: min(660px, 100%); margin: 0 auto; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 30px; }
+    .back { color: #d3deec; font-size: .9rem; text-decoration: none; }
+    .brand { display: flex; align-items: center; gap: 9px; color: #d3deec; font-size: .88rem; }
+    .brand img { width: 30px; height: 30px; border-radius: 9px; }
+    .intro { margin-bottom: 22px; text-align: center; }
+    .intro .icon { display: inline-grid; width: 74px; height: 74px; margin-bottom: 13px; place-items: center; border: 1px solid rgba(255,255,255,.2); border-radius: 22px; background: rgba(82,212,194,.13); font-size: 2.8rem; }
+    .eyebrow { margin: 0 0 8px; color: var(--mint); font-size: .72rem; font-weight: 800; letter-spacing: .16em; }
+    h1 { margin: 0; font-size: clamp(2rem, 7vw, 3.2rem); letter-spacing: -.05em; }
+    .intro p:last-child { margin: 10px 0 0; color: var(--muted); line-height: 1.6; }
+    .game-panel { padding: clamp(16px, 4vw, 26px); border: 1px solid rgba(255,255,255,.13); border-radius: 26px; background: rgba(20,27,51,.84); box-shadow: 0 24px 70px rgba(0,0,0,.3); }
+    .scorebar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; margin-bottom: 16px; }
+    .score { padding: 11px 8px; border: 1px solid rgba(255,255,255,.08); border-radius: 14px; background: rgba(255,255,255,.045); text-align: center; }
+    .score strong { display: block; color: var(--mint); font-size: 1.25rem; font-variant-numeric: tabular-nums; }
+    .score span { color: var(--muted); font-size: .72rem; }
+    .message { min-height: 24px; margin: 0 0 12px; color: #d3deec; font-size: .9rem; text-align: center; }
+    .board { display: grid; width: min(100%, 440px); grid-template-columns: repeat(4, 1fr); gap: clamp(7px, 2vw, 12px); margin: 0 auto; }
+    .card {
+      display: grid;
+      aspect-ratio: 1;
+      place-items: center;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: clamp(12px, 3vw, 18px);
+      background: linear-gradient(145deg, #293353, #202943);
+      color: white;
+      font-size: clamp(1.5rem, 8vw, 2.6rem);
+      cursor: pointer;
+      transition: transform .16s, background .16s, border-color .16s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .card:hover:not(:disabled) { transform: translateY(-2px); border-color: rgba(114,224,203,.45); }
+    .card:active:not(:disabled) { transform: scale(.96); }
+    .card[aria-pressed="false"] { color: transparent; background: linear-gradient(145deg, #293353, #202943); }
+    .card[aria-pressed="false"]::before { color: rgba(255,255,255,.36); content: "?"; }
+    .card.revealed, .card.matched { border-color: rgba(114,224,203,.45); background: linear-gradient(145deg, #1d5c5b, #214b59); }
+    .card.matched { cursor: default; opacity: .8; }
+    .controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 19px; }
+    .controls button, .controls a { display: inline-flex; min-height: 45px; align-items: center; justify-content: center; padding: 0 17px; border: 1px solid rgba(255,255,255,.14); border-radius: 13px; background: rgba(255,255,255,.07); color: white; font-weight: 750; text-decoration: none; cursor: pointer; }
+    .controls .start { border: 0; background: linear-gradient(135deg, #23a98c, #72e0cb); color: #08251f; }
+    .instructions { margin: 18px 0 0; color: var(--muted); font-size: .84rem; line-height: 1.6; text-align: center; }
+    .footer { margin-top: 18px; color: #8998b4; font-size: .75rem; text-align: center; }
+    @media (max-width: 430px) { body { padding: 16px 12px; } .topbar { margin-bottom: 22px; } .game-panel { border-radius: 21px; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="topbar">
+      <a class="back" href="../../pages/games.html">← Back to games</a>
+      <span class="brand"><img src="../../assets/logo.png" alt=""> Games Lab</span>
+    </header>
+    <section class="intro">
+      <span class="icon" aria-hidden="true">🃏</span>
+      <p class="eyebrow">QUICK PLAY · MEMORY MATCH</p>
+      <h1>Pixel Pairs</h1>
+      <p>Find all eight pairs in as few moves as you can.</p>
+    </section>
+    <section class="game-panel" aria-label="Pixel Pairs memory game">
+      <div class="scorebar" aria-live="polite">
+        <div class="score"><strong id="moves">0</strong><span>MOVES</span></div>
+        <div class="score"><strong id="timer">00:00</strong><span>TIME</span></div>
+        <div class="score"><strong id="best">—</strong><span>BEST MOVES</span></div>
+      </div>
+      <p class="message" id="message" role="status">Flip two cards and find a matching pair.</p>
+      <div class="board" id="board" aria-label="Memory card board"></div>
+      <div class="controls">
+        <button class="start" id="restart" type="button">New game</button>
+        <a href="../../pages/games.html">Game library</a>
+      </div>
+      <p class="instructions">Choose two cards to reveal their symbols. Matching pairs stay open; mismatches flip back. Your best move count is saved on this device.</p>
+    </section>
+    <p class="footer">Pixel Pairs · Made for quick breaks.</p>
+  </main>
+  <script>
+    const board = document.getElementById("board");
+    const movesDisplay = document.getElementById("moves");
+    const timerDisplay = document.getElementById("timer");
+    const bestDisplay = document.getElementById("best");
+    const message = document.getElementById("message");
+    const bestKey = "games-lab-pixel-pairs-best";
+    const symbols = ["🍓", "🌙", "🚀", "🪴", "🎧", "🦋", "🍉", "💎"];
+    let cards = [];
+    let revealed = [];
+    let moves = 0;
+    let matches = 0;
+    let startedAt = 0;
+    let timerId = 0;
+    let mismatchTimeout = 0;
+    let locked = false;
+    let finished = false;
+
+    function readBest() {
+      try {
+        const value = Number(localStorage.getItem(bestKey));
+        return Number.isInteger(value) && value > 0 ? value : null;
+      } catch (error) {
+        console.warn("Could not read the saved best score.", error);
+        return null;
+      }
+    }
+
+    function writeBest(value) {
+      try {
+        localStorage.setItem(bestKey, String(value));
+      } catch (error) {
+        console.warn("Could not save the best score.", error);
+      }
+    }
+
+    function updateBest() {
+      const best = readBest();
+      bestDisplay.textContent = best === null ? "—" : String(best);
+    }
+
+    function updateTimer() {
+      const seconds = Math.floor((Date.now() - startedAt) / 1000);
+      timerDisplay.textContent = `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+    }
+
+    function createCard(symbol, index) {
+      const button = document.createElement("button");
+      button.className = "card";
+      button.type = "button";
+      button.textContent = symbol;
+      button.setAttribute("aria-label", `Hidden card ${index + 1}`);
+      button.setAttribute("aria-pressed", "false");
+      button.addEventListener("click", () => revealCard(index));
+      return button;
+    }
+
+    function revealCard(index) {
+      if (locked || finished || cards[index].matched || revealed.includes(index)) return;
+      if (!startedAt) {
+        startedAt = Date.now();
+        timerId = window.setInterval(updateTimer, 250);
+      }
+
+      const card = cards[index];
+      card.button.classList.add("revealed");
+      card.button.setAttribute("aria-pressed", "true");
+      card.button.setAttribute("aria-label", card.symbol);
+      revealed.push(index);
+
+      if (revealed.length < 2) return;
+      moves += 1;
+      movesDisplay.textContent = String(moves);
+      const [first, second] = revealed.map((cardIndex) => cards[cardIndex]);
+      if (first.symbol === second.symbol) {
+        first.matched = true;
+        second.matched = true;
+        first.button.classList.add("matched");
+        second.button.classList.add("matched");
+        first.button.disabled = true;
+        second.button.disabled = true;
+        matches += 1;
+        revealed = [];
+        if (matches === symbols.length) finishGame();
+        else message.textContent = "Nice match! Find another pair.";
+        return;
+      }
+
+      locked = true;
+      message.textContent = "Not a pair. Try to remember those cards!";
+      mismatchTimeout = window.setTimeout(() => {
+        mismatchTimeout = 0;
+        for (const cardIndex of revealed) {
+          const mismatchedCard = cards[cardIndex].button;
+          mismatchedCard.classList.remove("revealed");
+          mismatchedCard.setAttribute("aria-pressed", "false");
+          mismatchedCard.setAttribute("aria-label", `Hidden card ${cardIndex + 1}`);
+        }
+        revealed = [];
+        locked = false;
+        message.textContent = "Choose two cards to reveal their symbols.";
+      }, 750);
+    }
+
+    function finishGame() {
+      finished = true;
+      window.clearInterval(timerId);
+      updateTimer();
+      const best = readBest();
+      if (best === null || moves < best) writeBest(moves);
+      updateBest();
+      message.textContent = `You found every pair in ${moves} moves. Great memory!`;
+    }
+
+    function startGame() {
+      window.clearInterval(timerId);
+      window.clearTimeout(mismatchTimeout);
+      mismatchTimeout = 0;
+      const deck = [...symbols, ...symbols];
+      for (let index = deck.length - 1; index > 0; index -= 1) {
+        const swapIndex = Math.floor(Math.random() * (index + 1));
+        [deck[index], deck[swapIndex]] = [deck[swapIndex], deck[index]];
+      }
+      cards = deck.map((symbol, index) => ({ symbol, matched: false, button: createCard(symbol, index) }));
+      board.replaceChildren(...cards.map((card) => card.button));
+      revealed = [];
+      moves = 0;
+      matches = 0;
+      startedAt = 0;
+      timerId = 0;
+      locked = false;
+      finished = false;
+      movesDisplay.textContent = "0";
+      timerDisplay.textContent = "00:00";
+      message.textContent = "Flip two cards and find a matching pair.";
+      updateBest();
+    }
+
+    document.getElementById("restart").addEventListener("click", startGame);
+    startGame();
+  </script>
+</body>
+</html>

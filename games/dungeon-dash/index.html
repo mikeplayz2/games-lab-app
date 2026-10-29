@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#201426">
+  <title>Dungeon Dash | Games Lab</title>
+  <link rel="stylesheet" href="../../css/mini-games.css">
+  <style>
+    :root { --game-accent: #ff8298; }
+    .dungeon-grid { display: grid; width: min(100%, 470px); grid-template-columns: repeat(11, minmax(0, 1fr)); gap: 3px; margin: 0 auto; padding: 9px; border: 1px solid rgba(255,130,152,.2); border-radius: 17px; background: #100e1a; }
+    .cell { display: grid; aspect-ratio: 1; place-items: center; border-radius: 4px; background: #2a2939; color: white; font-size: clamp(.55rem, 3.1vw, 1.15rem); }
+    .cell.wall { background: #14131f; }
+    .cell.path { background: #343044; }
+    .cell.trap { color: #ff9a76; }
+    .cell.exit { color: #ffe083; }
+    .cell.key, .cell.gem { color: #b7ffe2; }
+    .cell.player { background: #68435a; box-shadow: inset 0 0 0 2px #ff8298; }
+    .dungeon-pad { display: grid; grid-template-columns: repeat(3, 48px); gap: 5px; justify-content: center; margin: 11px auto 0; }
+    .dungeon-pad button { min-height: 42px; border: 1px solid var(--line); border-radius: 10px; background: rgba(255,255,255,.07); color: white; font-size: 1.05rem; touch-action: manipulation; }
+    .dungeon-pad button:nth-child(2) { grid-column: 2; grid-row: 1; }
+    .dungeon-pad button:nth-child(1) { grid-column: 1; grid-row: 2; }
+    .dungeon-pad button:nth-child(3) { grid-column: 2; grid-row: 2; }
+    .dungeon-pad button:nth-child(4) { grid-column: 3; grid-row: 2; }
+  </style>
+</head>
+<body>
+  <main class="game-page">
+    <header class="game-topbar">
+      <a class="game-back" href="../../pages/games.html">← Back to games</a>
+      <span class="game-brand"><img src="../../assets/logo.png" alt=""> Games Lab</span>
+    </header>
+    <section class="game-intro">
+      <span class="game-icon" aria-hidden="true">⚔️</span>
+      <p class="game-eyebrow">A LITTLE MAZE · A BIG ESCAPE</p>
+      <h1>Dungeon Dash</h1>
+      <p>Find the key, collect treasure, and make it to the golden exit.</p>
+    </section>
+    <section class="game-panel" aria-label="Dungeon Dash maze game">
+      <div class="game-stats" aria-live="polite">
+        <div class="game-stat"><strong id="gems">0 / 3</strong><span>GEMS</span></div>
+        <div class="game-stat"><strong id="hearts">♥ ♥ ♥</strong><span>HEARTS</span></div>
+        <div class="game-stat"><strong id="key-state">Find it</strong><span>KEY</span></div>
+      </div>
+      <p class="game-message" id="message" role="status">Use the arrow keys to explore. Watch for floor traps!</p>
+      <div class="dungeon-grid" id="maze" role="grid" aria-label="Dungeon maze"></div>
+      <div class="dungeon-pad" role="group" aria-label="Maze movement controls">
+        <button type="button" data-move="up" aria-label="Move up">↑</button>
+        <button type="button" data-move="left" aria-label="Move left">←</button>
+        <button type="button" data-move="down" aria-label="Move down">↓</button>
+        <button type="button" data-move="right" aria-label="Move right">→</button>
+      </div>
+      <div class="game-controls">
+        <button class="primary" id="restart" type="button">New dungeon</button>
+        <a href="../../pages/games.html">Game library</a>
+      </div>
+      <p class="game-instructions">Move with the arrow keys or WASD, or use the on-screen arrows. The maze is different each run. Find the key to open the exit; traps cost a heart.</p>
+    </section>
+    <p class="game-footer">Dungeon Dash · A new maze waits behind every door.</p>
+  </main>
+  <script>
+    const SIZE = 11;
+    const mazeElement = document.getElementById("maze");
+    const message = document.getElementById("message");
+    const directions = { up: [-1, 0], down: [1, 0], left: [0, -1], right: [0, 1] };
+    let map;
+    let player;
+    let start;
+    let exit;
+    let key;
+    let gems;
+    let traps;
+    let hearts;
+    let hasKey;
+    let moves;
+    let finished;
+
+    function shuffle(items) {
+      for (let index = items.length - 1; index > 0; index -= 1) {
+        const other = Math.floor(Math.random() * (index + 1));
+        [items[index], items[other]] = [items[other], items[index]];
+      }
+      return items;
+    }
+
+    function neighbors([row, col], stride = 1) {
+      return [[row - stride, col], [row + stride, col], [row, col - stride], [row, col + stride]]
+        .filter(([nextRow, nextCol]) => nextRow > 0 && nextRow < SIZE - 1 && nextCol > 0 && nextCol < SIZE - 1);
+    }
+
+    function createDungeon() {
+      map = Array.from({ length: SIZE }, () => Array(SIZE).fill("#"));
+      start = [1, 1];
+      map[1][1] = ".";
+      const visited = new Set(["1,1"]);
+      const stack = [[1, 1]];
+      while (stack.length) {
+        const current = stack[stack.length - 1];
+        const choices = shuffle(neighbors(current, 2).filter(([row, col]) => !visited.has(`${row},${col}`)));
+        if (!choices.length) { stack.pop(); continue; }
+        const [row, col] = choices[0];
+        map[(current[0] + row) / 2][(current[1] + col) / 2] = ".";
+        map[row][col] = ".";
+        visited.add(`${row},${col}`);
+        stack.push([row, col]);
+      }
+
+      const distance = new Map([[`${start[0]},${start[1]}`, 0]]);
+      const queue = [start];
+      for (let index = 0; index < queue.length; index += 1) {
+        const current = queue[index];
+        for (const [row, col] of neighbors(current)) {
+          if (map[row][col] !== "." || distance.has(`${row},${col}`)) continue;
+          distance.set(`${row},${col}`, distance.get(`${current[0]},${current[1]}`) + 1);
+          queue.push([row, col]);
+        }
+      }
+      const cells = [...distance.entries()]
+        .map(([position, steps]) => ({ position: position.split(",").map(Number), steps }))
+        .filter(({ position }) => !(position[0] === start[0] && position[1] === start[1]))
+        .sort((a, b) => a.steps - b.steps);
+      exit = cells[cells.length - 1].position;
+      key = cells[Math.floor(cells.length * .4)].position;
+      const reserved = new Set([`${exit[0]},${exit[1]}`, `${key[0]},${key[1]}`]);
+      gems = [];
+      for (const { position } of shuffle(cells.filter(({ steps }) => steps > 2))) {
+        const id = `${position[0]},${position[1]}`;
+        if (reserved.has(id)) continue;
+        gems.push(position);
+        reserved.add(id);
+        if (gems.length === 3) break;
+      }
+      traps = [];
+      for (const { position } of shuffle(cells.filter(({ steps }) => steps > 3))) {
+        const id = `${position[0]},${position[1]}`;
+        if (reserved.has(id)) continue;
+        traps.push(position);
+        reserved.add(id);
+        if (traps.length === 4) break;
+      }
+      player = [...start];
+      hearts = 3;
+      hasKey = false;
+      moves = 0;
+      finished = false;
+      message.textContent = "Use the arrow keys to explore. Watch for floor traps!";
+      render();
+    }
+
+    function samePosition(a, b) { return a[0] === b[0] && a[1] === b[1]; }
+
+    function render() {
+      const cells = [];
+      for (let row = 0; row < SIZE; row += 1) {
+        for (let col = 0; col < SIZE; col += 1) {
+          const element = document.createElement("span");
+          const here = [row, col];
+          element.className = map[row][col] === "#" ? "cell wall" : "cell path";
+          let symbol = map[row][col] === "#" ? "" : "·";
+          if (samePosition(here, player)) { element.classList.add("player"); symbol = "🧙"; }
+          else if (samePosition(here, exit)) { element.classList.add("exit"); symbol = hasKey ? "🚪" : "🔒"; }
+          else if (!hasKey && samePosition(here, key)) { element.classList.add("key"); symbol = "🗝️"; }
+          else if (gems.some((gem) => samePosition(gem, here))) { element.classList.add("gem"); symbol = "💎"; }
+          else if (traps.some((trap) => samePosition(trap, here))) { element.classList.add("trap"); symbol = "⚠️"; }
+          element.textContent = symbol;
+          element.setAttribute("role", "gridcell");
+          cells.push(element);
+        }
+      }
+      mazeElement.replaceChildren(...cells);
+      document.getElementById("gems").textContent = `${3 - gems.length} / 3`;
+      document.getElementById("hearts").textContent = hearts > 0 ? `${"♥ ".repeat(hearts).trim()}${"♡ ".repeat(3 - hearts).trim()}` : "♡ ♡ ♡";
+      document.getElementById("key-state").textContent = hasKey ? "Found!" : "Find it";
+    }
+
+    function move(direction) {
+      if (finished) return;
+      const [rowDelta, colDelta] = directions[direction];
+      const next = [player[0] + rowDelta, player[1] + colDelta];
+      if (!map[next[0]] || map[next[0]][next[1]] !== ".") return;
+      player = next;
+      moves += 1;
+      if (!hasKey && samePosition(player, key)) {
+        hasKey = true;
+        message.textContent = "You found the key! The golden exit is open.";
+      }
+      const gemIndex = gems.findIndex((gem) => samePosition(gem, player));
+      if (gemIndex !== -1) {
+        gems.splice(gemIndex, 1);
+        message.textContent = "Treasure collected! Keep exploring.";
+      }
+      const trapIndex = traps.findIndex((trap) => samePosition(trap, player));
+      if (trapIndex !== -1) {
+        traps.splice(trapIndex, 1);
+        hearts -= 1;
+        player = [...start];
+        message.textContent = hearts ? "A floor trap! You lost a heart and returned to the entrance." : "The dungeon got you this time. Try another maze!";
+        if (!hearts) finished = true;
+      } else if (samePosition(player, exit)) {
+        if (!hasKey) {
+          message.textContent = "The exit is locked. Find the key first!";
+          player = [exit[0] - rowDelta, exit[1] - colDelta];
+        } else {
+          finished = true;
+          const treasures = 3 - gems.length;
+          message.textContent = `Dungeon cleared in ${moves} moves with ${treasures} ${treasures === 1 ? "gem" : "gems"}!`;
+        }
+      } else if (samePosition(player, key)) {
+        message.textContent = "Key collected! Now find the exit.";
+      }
+      render();
+    }
+
+    document.addEventListener("keydown", (event) => {
+      const keyMap = { arrowup: "up", w: "up", arrowdown: "down", s: "down", arrowleft: "left", a: "left", arrowright: "right", d: "right" };
+      const direction = keyMap[event.key.toLowerCase()];
+      if (direction) { event.preventDefault(); move(direction); }
+    });
+    document.querySelectorAll("[data-move]").forEach((button) => button.addEventListener("click", () => move(button.dataset.move)));
+    document.getElementById("restart").addEventListener("click", createDungeon);
+    createDungeon();
+  </script>
+</body>
+</html>

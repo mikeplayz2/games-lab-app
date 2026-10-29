@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#11142b">
+  <title>Starfall Circuit | Games Lab</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: "Segoe UI", Arial, sans-serif;
+      color: #f8fafc;
+      background: #11142b;
+      --muted: #aab4ce;
+      --orange: #ffae72;
+    }
+    * { box-sizing: border-box; }
+    body {
+      min-height: 100vh;
+      margin: 0;
+      padding: 22px;
+      background:
+        radial-gradient(ellipse at 50% 0, rgba(255,157,92,.2), transparent 42%),
+        linear-gradient(155deg, #11142b, #17162f 65%, #251b36);
+    }
+    button, a { font: inherit; }
+    button:focus-visible, a:focus-visible { outline: 3px solid var(--orange); outline-offset: 3px; }
+    .page { width: min(680px, 100%); margin: 0 auto; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 25px; }
+    .back { color: #d3deec; font-size: .9rem; text-decoration: none; }
+    .brand { display: flex; align-items: center; gap: 9px; color: #d3deec; font-size: .88rem; }
+    .brand img { width: 30px; height: 30px; border-radius: 9px; }
+    .intro { margin-bottom: 20px; text-align: center; }
+    .eyebrow { margin: 0 0 8px; color: var(--orange); font-size: .72rem; font-weight: 800; letter-spacing: .16em; }
+    h1 { margin: 0; font-size: clamp(2rem, 7vw, 3.2rem); letter-spacing: -.05em; }
+    .intro p:last-child { margin: 10px 0 0; color: var(--muted); line-height: 1.6; }
+    .game-panel { padding: clamp(15px, 4vw, 24px); border: 1px solid rgba(255,255,255,.13); border-radius: 26px; background: rgba(21,24,49,.86); box-shadow: 0 24px 70px rgba(0,0,0,.3); }
+    .scorebar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; margin-bottom: 14px; }
+    .score { padding: 10px 8px; border: 1px solid rgba(255,255,255,.08); border-radius: 14px; background: rgba(255,255,255,.045); text-align: center; }
+    .score strong { display: block; color: var(--orange); font-size: 1.25rem; font-variant-numeric: tabular-nums; }
+    .score span { color: var(--muted); font-size: .72rem; }
+    canvas { display: block; width: min(100%, 480px); height: auto; margin: 0 auto; border: 1px solid rgba(255,255,255,.12); border-radius: 18px; background: #0b1025; }
+    .controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 16px; }
+    .controls button, .controls a { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; padding: 0 16px; border: 1px solid rgba(255,255,255,.14); border-radius: 13px; background: rgba(255,255,255,.07); color: white; font-weight: 750; text-decoration: none; cursor: pointer; user-select: none; }
+    .controls .start { border: 0; background: linear-gradient(135deg, #ff985b, #ffd178); color: #311a19; }
+    .controls .move { width: 58px; font-size: 1.25rem; touch-action: none; }
+    .instructions { margin: 15px 0 0; color: var(--muted); font-size: .84rem; line-height: 1.6; text-align: center; }
+    .footer { margin-top: 16px; color: #8992ae; font-size: .75rem; text-align: center; }
+    @media (max-width: 430px) { body { padding: 16px 12px; } .topbar { margin-bottom: 21px; } .game-panel { border-radius: 21px; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="topbar">
+      <a class="back" href="../../pages/games.html">← Back to games</a>
+      <span class="brand"><img src="../../assets/logo.png" alt=""> Games Lab</span>
+    </header>
+    <section class="intro">
+      <p class="eyebrow">QUICK PLAY · ARCADE SURVIVAL</p>
+      <h1>Starfall Circuit</h1>
+      <p>Guide your ship through the meteor shower and collect stardust.</p>
+    </section>
+    <section class="game-panel" aria-label="Starfall Circuit arcade game">
+      <div class="scorebar" aria-live="polite">
+        <div class="score"><strong id="score">0</strong><span>STARDUST</span></div>
+        <div class="score"><strong id="lives">3</strong><span>SHIELDS</span></div>
+        <div class="score"><strong id="best">0</strong><span>BEST</span></div>
+      </div>
+      <canvas id="game" width="480" height="560" role="img" aria-label="Starfield game. Use the left and right arrow keys to steer."></canvas>
+      <div class="controls">
+        <button class="move" id="left" type="button" aria-label="Move left">←</button>
+        <button class="start" id="start" type="button">Start flight</button>
+        <button class="move" id="right" type="button" aria-label="Move right">→</button>
+        <a href="../../pages/games.html">Game library</a>
+      </div>
+      <p class="instructions">Move with ← → or A / D. On touchscreens, hold the arrow buttons. Collect ✦ stardust and avoid ☄ meteors. You have three shields.</p>
+    </section>
+    <p class="footer">Starfall Circuit · Best score is saved on this device.</p>
+  </main>
+  <script>
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+    const scoreDisplay = document.getElementById("score");
+    const livesDisplay = document.getElementById("lives");
+    const bestDisplay = document.getElementById("best");
+    const startButton = document.getElementById("start");
+    const bestKey = "games-lab-starfall-circuit-best";
+    const keys = { left: false, right: false };
+    const backgroundStars = Array.from({ length: 65 }, () => ({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      size: Math.random() * 1.8 + .5,
+      alpha: Math.random() * .55 + .2
+    }));
+    const player = { x: canvas.width / 2, y: canvas.height - 54, radius: 17 };
+    let meteors = [];
+    let stardust = [];
+    let score = 0;
+    let lives = 3;
+    let best = 0;
+    let spawnTime = 0;
+    let lastFrame = 0;
+    let invulnerableUntil = 0;
+    let running = false;
+    let ended = false;
+    let animationId = 0;
+
+    function readBest() {
+      try {
+        return Number(localStorage.getItem(bestKey)) || 0;
+      } catch (error) {
+        console.warn("Could not read the saved best score.", error);
+        return 0;
+      }
+    }
+
+    function saveBest() {
+      try {
+        localStorage.setItem(bestKey, String(best));
+      } catch (error) {
+        console.warn("Could not save the best score.", error);
+      }
+    }
+
+    function drawScene() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (const star of backgroundStars) {
+        ctx.globalAlpha = star.alpha;
+        ctx.fillStyle = "#dce7ff";
+        ctx.beginPath();
+        ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+
+      for (const item of stardust) {
+        ctx.save();
+        ctx.translate(item.x, item.y);
+        ctx.rotate(item.rotation);
+        ctx.fillStyle = "#ffe58b";
+        ctx.shadowColor = "#ffc95f";
+        ctx.shadowBlur = 12;
+        ctx.font = "22px Segoe UI";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("✦", 0, 0);
+        ctx.restore();
+      }
+
+      for (const meteor of meteors) {
+        ctx.fillStyle = "#c17c69";
+        ctx.shadowColor = "#ff956d";
+        ctx.shadowBlur = 13;
+        ctx.beginPath();
+        ctx.arc(meteor.x, meteor.y, meteor.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = "rgba(255,223,190,.4)";
+        ctx.beginPath();
+        ctx.arc(meteor.x - meteor.radius * .3, meteor.y - meteor.radius * .25, meteor.radius * .22, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      const flickering = performance.now() < invulnerableUntil && Math.floor(performance.now() / 90) % 2 === 0;
+      if (!flickering) {
+        ctx.save();
+        ctx.translate(player.x, player.y);
+        ctx.shadowColor = "#73d9ff";
+        ctx.shadowBlur = 18;
+        ctx.fillStyle = "#8ee4ff";
+        ctx.beginPath();
+        ctx.moveTo(0, -player.radius);
+        ctx.lineTo(player.radius * .78, player.radius);
+        ctx.lineTo(0, player.radius * .48);
+        ctx.lineTo(-player.radius * .78, player.radius);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+
+      if (!running) {
+        ctx.fillStyle = "rgba(7,11,28,.76)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#fff";
+        ctx.font = "700 29px Segoe UI";
+        ctx.fillText(ended ? "Flight over" : "Ready for launch?", canvas.width / 2, canvas.height / 2 - 12);
+        ctx.fillStyle = "#c4cce1";
+        ctx.font = "16px Segoe UI";
+        ctx.fillText(ended ? `Stardust collected: ${score}` : "Press Start flight to begin", canvas.width / 2, canvas.height / 2 + 22);
+      }
+    }
+
+    function updateScore() {
+      scoreDisplay.textContent = String(score);
+      livesDisplay.textContent = String(lives);
+      bestDisplay.textContent = String(best);
+    }
+
+    function spawnObjects() {
+      const speed = 180 + Math.min(score, 600) * .22;
+      const meteorX = 28 + Math.random() * (canvas.width - 56);
+      meteors.push({ x: meteorX, y: -24, radius: 13 + Math.random() * 8, speed: speed + Math.random() * 85 });
+      if (Math.random() < .72) {
+        stardust.push({ x: 25 + Math.random() * (canvas.width - 50), y: -22, rotation: Math.random() * Math.PI, speed: speed * .72 });
+      }
+    }
+
+    function overlaps(object, radius) {
+      const dx = player.x - object.x;
+      const dy = player.y - object.y;
+      return dx * dx + dy * dy < (player.radius + radius) ** 2;
+    }
+
+    function finishFlight() {
+      running = false;
+      ended = true;
+      keys.left = false;
+      keys.right = false;
+      startButton.textContent = "Fly again";
+      if (score > best) {
+        best = score;
+        saveBest();
+      }
+      updateScore();
+      drawScene();
+    }
+
+    function updateGame(delta, now) {
+      const direction = Number(keys.right) - Number(keys.left);
+      player.x = Math.max(player.radius + 5, Math.min(canvas.width - player.radius - 5, player.x + direction * 360 * delta));
+
+      spawnTime += delta;
+      const spawnInterval = Math.max(.34, 1.02 - score / 650);
+      if (spawnTime >= spawnInterval) {
+        spawnTime = 0;
+        spawnObjects();
+      }
+
+      for (const meteor of meteors) meteor.y += meteor.speed * delta;
+      for (const item of stardust) item.y += item.speed * delta;
+      meteors = meteors.filter((meteor) => meteor.y < canvas.height + meteor.radius);
+      stardust = stardust.filter((item) => item.y < canvas.height + 16);
+
+      if (now >= invulnerableUntil) {
+        const hitIndex = meteors.findIndex((meteor) => overlaps(meteor, meteor.radius));
+        if (hitIndex !== -1) {
+          meteors.splice(hitIndex, 1);
+          lives -= 1;
+          invulnerableUntil = now + 1100;
+          if (lives <= 0) {
+            finishFlight();
+            return;
+          }
+        }
+      }
+
+      stardust = stardust.filter((item) => {
+        if (!overlaps(item, 10)) return true;
+        score += 10;
+        return false;
+      });
+      updateScore();
+    }
+
+    function gameLoop(now) {
+      if (!running) return;
+      const delta = Math.min((now - lastFrame) / 1000, .05);
+      lastFrame = now;
+      updateGame(delta, now);
+      drawScene();
+      if (running) animationId = requestAnimationFrame(gameLoop);
+    }
+
+    function startFlight() {
+      cancelAnimationFrame(animationId);
+      meteors = [];
+      stardust = [];
+      score = 0;
+      lives = 3;
+      spawnTime = 0;
+      invulnerableUntil = 0;
+      player.x = canvas.width / 2;
+      running = true;
+      ended = false;
+      lastFrame = performance.now();
+      startButton.textContent = "In flight";
+      updateScore();
+      animationId = requestAnimationFrame(gameLoop);
+    }
+
+    function setKey(event, pressed) {
+      const key = event.key.toLowerCase();
+      if (key === "arrowleft" || key === "a") {
+        keys.left = pressed;
+        event.preventDefault();
+      } else if (key === "arrowright" || key === "d") {
+        keys.right = pressed;
+        event.preventDefault();
+      }
+    }
+
+    function bindHoldButton(id, direction) {
+      const button = document.getElementById(id);
+      button.addEventListener("pointerdown", (event) => {
+        event.preventDefault();
+        keys[direction] = true;
+        button.setPointerCapture(event.pointerId);
+      });
+      for (const eventName of ["pointerup", "pointercancel", "lostpointercapture"]) {
+        button.addEventListener(eventName, () => {
+          keys[direction] = false;
+        });
+      }
+    }
+
+    document.addEventListener("keydown", (event) => setKey(event, true));
+    document.addEventListener("keyup", (event) => setKey(event, false));
+    window.addEventListener("blur", () => {
+      keys.left = false;
+      keys.right = false;
+    });
+    bindHoldButton("left", "left");
+    bindHoldButton("right", "right");
+    startButton.addEventListener("click", startFlight);
+    best = readBest();
+    updateScore();
+    drawScene();
+  </script>
+</body>
+</html>

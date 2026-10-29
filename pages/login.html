@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#071226">
+  <title>Sign in | Games Lab</title>
+  <link rel="stylesheet" href="../css/auth.css">
+</head>
+<body>
+  <div class="background" aria-hidden="true"></div>
+  <main class="auth-card">
+    <img src="../assets/logo.png" class="logo" alt="Games Lab logo">
+    <p class="eyebrow">YOUR NEXT ADVENTURE STARTS HERE</p>
+    <h1>Games Lab</h1>
+    <p class="intro">Play. Create. Discover.</p>
+
+    <form id="auth-form" novalidate>
+      <div id="name-field" class="field" hidden>
+        <label for="display-name">Your name</label>
+        <input type="text" id="display-name" name="name" placeholder="How should we call you?" maxlength="60" autocomplete="name">
+      </div>
+
+      <div id="avatar-field" class="field avatar-field" hidden>
+        <label for="avatar-file">Profile photo <span>(optional)</span></label>
+        <div class="avatar-picker">
+          <img id="avatar-preview" alt="Selected profile photo" hidden>
+          <input type="file" id="avatar-file" name="avatar" accept="image/*">
+        </div>
+        <small>Your photo is cropped to a square and saved for this browser.</small>
+      </div>
+
+      <div class="field">
+        <label for="email">Email address</label>
+        <input type="email" id="email" name="email" placeholder="you@example.com" autocomplete="email" required>
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" placeholder="At least 6 characters" autocomplete="current-password" minlength="6" required>
+      </div>
+
+      <button id="submit-button" class="primary-button" type="submit">Sign in</button>
+    </form>
+
+    <p id="auth-message" class="auth-message" role="status" aria-live="polite"></p>
+
+    <div class="mode-switch">
+      <span id="mode-description">New to Games Lab?</span>
+      <button id="mode-button" type="button">Create an account</button>
+    </div>
+
+    <div class="divider"><span>OR</span></div>
+    <button id="google-button" class="google-btn" type="button">
+      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="">
+      Continue with Google
+    </button>
+  </main>
+
+  <script src="../js/desktop.js"></script>
+  <script type="module" src="../js/auth.js"></script>
+</body>
+</html>

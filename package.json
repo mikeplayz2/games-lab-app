@@ -1,0 +1,76 @@
+{
+  "name": "games-lab",
+  "version": "1.0.8",
+  "description": "Games Lab desktop app",
+  "author": "Games Lab",
+  "license": "UNLICENSED",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist:win": "electron-builder --win nsis --x64 --publish never",
+    "publish:win": "electron-builder --win nsis --x64 --publish always"
+  },
+  "dependencies": {
+    "electron-updater": "^6.6.2"
+  },
+  "devDependencies": {
+    "electron": "^39.0.0",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.gameslab.desktop",
+    "productName": "Games Lab",
+    "asar": true,
+    "files": [
+      "main.js",
+      "preload.js",
+      "local-games-scanner.js",
+      "release-config.json",
+      "pages/**/*",
+      "js/**/*",
+      "css/**/*",
+      "assets/**/*",
+      "games/**/*"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "artifactName": "Games-Lab-Setup-${version}.${ext}",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "mikeplayz2",
+        "repo": "games-lab-app",
+        "releaseType": "release"
+      }
+    ],
+    "win": {
+      "icon": "assets/logo.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "assets/logo.ico",
+      "uninstallerIcon": "assets/logo.ico",
+      "installerHeader": "assets/installer-header.bmp",
+      "installerSidebar": "assets/installer-sidebar.bmp",
+      "uninstallerSidebar": "assets/installer-sidebar.bmp",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Games Lab",
+      "deleteAppDataOnUninstall": false
+    }
+  },
+  "allowScripts": {
+    "electron@39.8.10": true,
+    "electron-winstaller@5.4.0": true
+  }
+}

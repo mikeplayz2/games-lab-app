@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#123329">
+  <title>Solitaire | Games Lab</title>
+  <link rel="stylesheet" href="../../css/mini-games.css">
+  <style>
+    :root { --game-accent: #84e2b2; }
+    .card-label { margin: 0 0 6px; color: var(--game-muted); font-size: .68rem; text-align: center; }
+    .card-row, .tableau-row { min-width: 555px; }
+    .solitaire-board { padding: 3px 2px 12px; }
+    .tableau-cards { min-height: 390px; }
+    .status-line { min-height: 23px; }
+  </style>
+</head>
+<body>
+  <main class="game-page">
+    <header class="game-topbar">
+      <a class="game-back" href="../../pages/games.html">← Back to games</a>
+      <span class="game-brand"><img src="../../assets/logo.png" alt=""> Games Lab</span>
+    </header>
+    <section class="game-intro">
+      <span class="game-icon" aria-hidden="true">🂡</span>
+      <p class="game-eyebrow">THE CLASSIC CARD GAME</p>
+      <h1>Solitaire</h1>
+      <p>Build each suit from ace to king and clear the tableau.</p>
+    </section>
+    <section class="game-panel" aria-label="Klondike Solitaire">
+      <div class="game-stats" aria-live="polite">
+        <div class="game-stat"><strong id="moves">0</strong><span>MOVES</span></div>
+        <div class="game-stat"><strong id="stock-count">24</strong><span>STOCK</span></div>
+        <div class="game-stat"><strong id="foundations-count">0 / 52</strong><span>FOUNDATIONS</span></div>
+      </div>
+      <p class="game-message status-line" id="message" role="status">Tap the stock to draw. Select a card, then tap a destination pile.</p>
+      <div class="cards-scroll solitaire-board" aria-label="Solitaire card table">
+        <div class="card-row">
+          <div><p class="card-label">Stock</p><div class="card-pile" id="stock" aria-label="Stock pile"></div></div>
+          <div><p class="card-label">Waste</p><div class="card-pile" id="waste" aria-label="Waste pile"></div></div>
+          <div aria-hidden="true"></div>
+          <div><p class="card-label">Foundation</p><div class="card-pile" data-foundation="0" aria-label="Spades foundation"></div></div>
+          <div><p class="card-label">Foundation</p><div class="card-pile" data-foundation="1" aria-label="Hearts foundation"></div></div>
+          <div><p class="card-label">Foundation</p><div class="card-pile" data-foundation="2" aria-label="Clubs foundation"></div></div>
+          <div><p class="card-label">Foundation</p><div class="card-pile" data-foundation="3" aria-label="Diamonds foundation"></div></div>
+        </div>
+        <div class="tableau-row" id="tableau" aria-label="Tableau columns"></div>
+      </div>
+      <div class="game-controls">
+        <button class="primary" id="new-game" type="button">New deal</button>
+        <button id="undo" type="button">Undo</button>
+        <a href="../../pages/games.html">Game library</a>
+      </div>
+      <p class="game-instructions">Move face-up cards in descending order, alternating red and black. Empty columns are for kings. Build the foundations from ace to king. Draw through the stock; tap it again to recycle the waste.</p>
+    </section>
+    <p class="game-footer">Solitaire · One card at a time, one good move at a time.</p>
+  </main>
+  <script>
+    const suits = ["♠", "♥", "♣", "♦"];
+    const redSuits = new Set(["♥", "♦"]);
+    const rankNames = ["", "A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
+    const tableauElement = document.getElementById("tableau");
+    const stockElement = document.getElementById("stock");
+    const wasteElement = document.getElementById("waste");
+    const message = document.getElementById("message");
+    let state;
+    let selected = null;
+    let history = [];
+
+    function shuffle(deck) {
+      for (let index = deck.length - 1; index > 0; index -= 1) {
+        const other = Math.floor(Math.random() * (index + 1));
+        [deck[index], deck[other]] = [deck[other], deck[index]];
+      }
+      return deck;
+    }
+
+    function snapshot() {
+      history.push(JSON.stringify(state));
+      if (history.length > 100) history.shift();
+    }
+
+    function cardColor(card) { return redSuits.has(card.suit) ? "red" : "black"; }
+
+    function makeCard(card, isSelected, onClick, onDoubleClick) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `playing-card ${cardColor(card)}${isSelected ? " selected" : ""}`;
+      button.setAttribute("aria-label", `${rankNames[card.rank]} of ${card.suit}`);
+      button.setAttribute("aria-pressed", String(isSelected));
+      const corner = document.createElement("span");
+      corner.className = "card-corner";
+      corner.textContent = `${rankNames[card.rank]}${card.suit}`;
+      const center = document.createElement("span");
+      center.className = "card-center";
+      center.textContent = card.suit;
+      button.append(corner, center);
+      button.addEventListener("click", (event) => { event.stopPropagation(); onClick(); });
+      if (onDoubleClick) button.addEventListener("dblclick", (event) => { event.stopPropagation(); onDoubleClick(); });
+      return button;
+    }
+
+    function sourceCards(source) {
+      return source.type === "waste"
+        ? [state.waste[state.waste.length - 1]]
+        : state.tableau[source.column].slice(source.index);
+    }
+
+    function validRun(cards) {
+      return cards.every((card, index) => card.faceUp
+        && (index === cards.length - 1 || (card.rank === cards[index + 1].rank + 1 && cardColor(card) !== cardColor(cards[index + 1]))));
+    }
+
+    function popSelection() {
+      if (selected.type === "waste") return state.waste.pop();
+      const column = state.tableau[selected.column];
+      const moved = column.splice(selected.index);
+      const exposed = column[column.length - 1];
+      if (exposed && !exposed.faceUp) exposed.faceUp = true;
+      return moved;
+    }
+
+    function tryTableauMove(columnIndex, targetCardIndex = null) {
+      if (!selected) return false;
+      const moving = sourceCards(selected);
+      if (!moving.length || !validRun(moving)) {
+        message.textContent = "That stack is not in descending, alternating-color order.";
+        return false;
+      }
+      if (selected.type === "tableau" && selected.column === columnIndex) return false;
+      const destination = state.tableau[columnIndex];
+      if (targetCardIndex !== null && targetCardIndex !== destination.length - 1) return false;
+      const target = targetCardIndex === null ? destination[destination.length - 1] : destination[targetCardIndex];
+      const bottom = moving[0];
+      if (target ? target.rank !== bottom.rank + 1 || cardColor(target) === cardColor(bottom) : bottom.rank !== 13) {
+        message.textContent = target ? "Place a card on the next rank down and the opposite color." : "Only a king can start an empty column.";
+        return false;
+      }
+      snapshot();
+      const moved = popSelection();
+      destination.push(...(Array.isArray(moved) ? moved : [moved]));
+      selected = null;
+      state.moves += 1;
+      message.textContent = "Good move.";
+      checkWin();
+      render();
+      return true;
+    }
+
+    function tryFoundation(foundationIndex) {
+      if (!selected) return false;
+      const moving = sourceCards(selected);
+      if (moving.length !== 1) {
+        message.textContent = "Only one card at a time can go to a foundation.";
+        return false;
+      }
+      const card = moving[0];
+      const foundation = state.foundations[foundationIndex];
+      if (suits[foundationIndex] !== card.suit || card.rank !== (foundation.length ? foundation[foundation.length - 1].rank + 1 : 1)) {
+        message.textContent = "Build each foundation from ace to king in the same suit.";
+        return false;
+      }
+      snapshot();
+      const moved = popSelection();
+      foundation.push(moved);
+      selected = null;
+      state.moves += 1;
+      message.textContent = "Card added to its foundation.";
+      checkWin();
+      render();
+      return true;
+    }
+
+    function moveToFoundation(source) {
+      const card = source.type === "waste"
+        ? state.waste[state.waste.length - 1]
+        : state.tableau[source.column][state.tableau[source.column].length - 1];
+      if (!card || (source.type === "tableau" && source.index !== state.tableau[source.column].length - 1)) return;
+      const foundationIndex = suits.indexOf(card.suit);
+      selected = source;
+      tryFoundation(foundationIndex);
+    }
+
+    function selectWaste() {
+      if (!state.waste.length) return;
+      selected = selected && selected.type === "waste" ? null : { type: "waste" };
+      message.textContent = selected ? "Waste card selected. Choose a tableau column or its foundation." : "Selection cleared.";
+      render();
+    }
+
+    function selectTableau(columnIndex, cardIndex) {
+      const column = state.tableau[columnIndex];
+      const card = column[cardIndex];
+      if (!card.faceUp) return;
+      if (selected && (selected.type !== "tableau" || selected.column !== columnIndex)) {
+        if (tryTableauMove(columnIndex, cardIndex)) return;
+      }
+      if (selected && selected.type === "tableau" && selected.column === columnIndex && selected.index === cardIndex) {
+        selected = null;
+      } else {
+        selected = { type: "tableau", column: columnIndex, index: cardIndex };
+        message.textContent = validRun(column.slice(cardIndex))
+          ? "Card stack selected. Tap a valid destination."
+          : "That card has cards below it in an invalid sequence.";
+      }
+      render();
+    }
+
+    function drawStock() {
+      if (state.stock.length) {
+        snapshot();
+        const card = state.stock.pop();
+        card.faceUp = true;
+        state.waste.push(card);
+        selected = null;
+        state.moves += 1;
+        message.textContent = "Stock card drawn.";
+      } else if (state.waste.length) {
+        snapshot();
+        while (state.waste.length) {
+          const card = state.waste.pop();
+          card.faceUp = false;
+          state.stock.push(card);
+        }
+        selected = null;
+        state.moves += 1;
+        message.textContent = "Waste recycled into the stock.";
+      } else {
+        message.textContent = "No cards remain in the stock.";
+      }
+      render();
+    }
+
+    function checkWin() {
+      const total = state.foundations.reduce((sum, pile) => sum + pile.length, 0);
+      if (total === 52) message.textContent = "You cleared the deck! Congratulations!";
+    }
+
+    function render() {
+      const stockTop = state.stock[state.stock.length - 1];
+      stockElement.replaceChildren();
+      if (stockTop) {
+        const back = document.createElement("button");
+        back.type = "button";
+        back.className = "playing-card face-down";
+        back.setAttribute("aria-label", `Draw from stock, ${state.stock.length} cards remaining`);
+        back.addEventListener("click", drawStock);
+        stockElement.append(back);
+      } else {
+        const recycle = document.createElement("button");
+        recycle.type = "button";
+        recycle.className = "pile-placeholder";
+        recycle.textContent = state.waste.length ? "↻" : "—";
+        recycle.setAttribute("aria-label", state.waste.length ? "Recycle waste into stock" : "Stock empty");
+        recycle.addEventListener("click", drawStock);
+        stockElement.append(recycle);
+      }
+
+      wasteElement.replaceChildren();
+      const wasteTop = state.waste[state.waste.length - 1];
+      if (wasteTop) {
+        wasteElement.append(makeCard(wasteTop, selected?.type === "waste", selectWaste, () => moveToFoundation({ type: "waste" })));
+      } else {
+        const placeholder = document.createElement("span");
+        placeholder.className = "pile-placeholder";
+        placeholder.textContent = "·";
+        wasteElement.append(placeholder);
+      }
+
+      document.querySelectorAll("[data-foundation]").forEach((pileElement) => {
+        const index = Number(pileElement.dataset.foundation);
+        const cards = state.foundations[index];
+        pileElement.replaceChildren();
+        const top = cards[cards.length - 1];
+        if (top) pileElement.append(makeCard(top, false, () => tryFoundation(index)));
+        else {
+          const placeholder = document.createElement("button");
+          placeholder.type = "button";
+          placeholder.className = "pile-placeholder";
+          placeholder.textContent = suits[index];
+          placeholder.setAttribute("aria-label", `Move selected card to ${suits[index]} foundation`);
+          placeholder.addEventListener("click", () => tryFoundation(index));
+          pileElement.append(placeholder);
+        }
+      });
+
+      tableauElement.replaceChildren(...state.tableau.map((column, columnIndex) => {
+        const pile = document.createElement("div");
+        pile.className = "tableau-cards";
+        pile.setAttribute("aria-label", `Tableau column ${columnIndex + 1}`);
+        column.forEach((card, cardIndex) => {
+          const button = card.faceUp
+            ? makeCard(card, selected?.type === "tableau" && selected.column === columnIndex && selected.index === cardIndex,
+              () => selectTableau(columnIndex, cardIndex),
+              cardIndex === column.length - 1 ? () => moveToFoundation({ type: "tableau", column: columnIndex, index: cardIndex }) : null)
+            : document.createElement("button");
+          if (!card.faceUp) {
+            button.type = "button";
+            button.className = "playing-card face-down";
+            button.setAttribute("aria-label", "Face-down card");
+          }
+          button.style.top = `${column.slice(0, cardIndex).reduce((offset, previous) => offset + (previous.faceUp ? 25 : 18), 0)}px`;
+          pile.append(button);
+        });
+        pile.addEventListener("click", () => {
+          if (!column.length && selected) tryTableauMove(columnIndex);
+        });
+        return pile;
+      }));
+
+      document.getElementById("moves").textContent = String(state.moves);
+      document.getElementById("stock-count").textContent = String(state.stock.length);
+      document.getElementById("foundations-count").textContent = `${state.foundations.reduce((sum, pile) => sum + pile.length, 0)} / 52`;
+      document.getElementById("undo").disabled = history.length === 0;
+    }
+
+    function newGame() {
+      const deck = shuffle(suits.flatMap((suit) => Array.from({ length: 13 }, (_, index) => ({ rank: index + 1, suit, faceUp: false }))));
+      const tableau = Array.from({ length: 7 }, () => []);
+      for (let column = 0; column < tableau.length; column += 1) {
+        for (let row = 0; row <= column; row += 1) {
+          const card = deck.pop();
+          card.faceUp = row === column;
+          tableau[column].push(card);
+        }
+      }
+      state = { stock: deck, waste: [], tableau, foundations: Array.from({ length: 4 }, () => []), moves: 0 };
+      selected = null;
+      history = [];
+      message.textContent = "Tap the stock to draw. Select a card, then tap a destination pile.";
+      render();
+    }
+
+    document.getElementById("undo").addEventListener("click", () => {
+      if (!history.length) return;
+      state = JSON.parse(history.pop());
+      selected = null;
+      message.textContent = "Last move undone.";
+      render();
+    });
+    document.getElementById("new-game").addEventListener("click", newGame);
+    newGame();
+  </script>
+</body>
+</html>

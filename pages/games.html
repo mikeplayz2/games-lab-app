@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#071226">
+  <title>Games | Games Lab</title>
+  <link rel="stylesheet" href="../css/site.css">
+  <style>
+    .games-intro { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 18px; }
+    .library-tools { display: flex; flex-wrap: wrap; gap: 10px; }
+    .library-tools input, .library-tools select {
+      min-height: 44px;
+      padding: 0 14px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(255,255,255,.06);
+      color: white;
+    }
+    .library-tools input { width: min(270px, 55vw); }
+    .library-tools select option { background: #101c31; }
+    .game-count { color: var(--muted); font-size: .88rem; }
+    .game-card { overflow: hidden; border-radius: 21px; transition: transform .22s, border-color .22s; }
+    .game-card:hover { transform: translateY(-5px); border-color: color-mix(in srgb, var(--game-accent) 60%, transparent); }
+    .game-art {
+      position: relative;
+      display: grid;
+      min-height: 175px;
+      overflow: hidden;
+      place-items: center;
+      background:
+        radial-gradient(ellipse at 50% 40%, color-mix(in srgb, var(--game-accent) 63%, transparent), transparent 55%),
+        linear-gradient(145deg, color-mix(in srgb, var(--game-accent) 25%, #14223b), #0c1527);
+    }
+    .game-art::before, .game-art::after {
+      position: absolute;
+      width: 190px;
+      height: 190px;
+      border: 1px solid color-mix(in srgb, var(--game-accent) 35%, transparent);
+      border-radius: 50%;
+      content: "";
+      transform: rotate(-24deg) scaleX(1.7);
+    }
+    .game-art::after { width: 140px; height: 140px; transform: rotate(38deg) scaleX(1.6); }
+    .game-icon { z-index: 1; width: 96px; height: 96px; border: 1px solid rgba(255,255,255,.25); border-radius: 25px; object-fit: cover; box-shadow: 0 15px 35px rgba(0,0,0,.35); transition: transform .25s; }
+    .game-emoji { z-index: 1; font-size: 4.7rem; filter: drop-shadow(0 10px 24px rgba(0,0,0,.4)); transition: transform .25s; }
+    .game-card:hover .game-icon, .game-card:hover .game-emoji { transform: scale(1.12) rotate(-5deg); }
+    .game-body { padding: 18px; }
+    .game-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+    .game-category { color: var(--blue); font-size: .73rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+    .game-status { padding: 5px 9px; border: 1px solid var(--line); border-radius: 999px; color: #d3deec; font-size: .72rem; }
+    .game-body h3 { margin: 15px 0 7px; font-size: 1.25rem; }
+    .game-body p { min-height: 66px; margin: 0; color: var(--muted); font-size: .91rem; line-height: 1.6; }
+    .game-link { display: inline-flex; margin-top: 16px; color: white; font-size: .87rem; font-weight: 750; text-decoration: none; }
+    .game-link.unavailable { color: #8493a8; cursor: default; }
+    .empty-state { padding: 42px 20px; border-radius: 20px; color: var(--muted); text-align: center; }
+    .empty-state[hidden] { display: none; }
+    .empty-state strong { display: block; margin-bottom: 8px; color: white; font-size: 1.1rem; }
+    .add-games-note { margin-top: 22px; padding: 18px 20px; border: 1px solid var(--line); border-radius: 16px; background: rgba(255,255,255,.035); color: var(--muted); font-size: .88rem; line-height: 1.75; }
+    .add-games-note code { padding: 2px 6px; border-radius: 6px; background: rgba(255,255,255,.08); color: #dbeafe; }
+    @media (max-width: 760px) { .game-art { min-height: 155px; } }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <header class="app-header">
+      <a class="brand" href="./dashboard.html">
+        <img src="../assets/logo.png" alt="">
+        <span><h1>Games Lab</h1><p>Play. Create. Discover.</p></span>
+      </a>
+      <a class="user-chip" href="./profile.html" aria-label="Open your profile">
+        <img data-user-avatar src="../assets/logo.png" alt="">
+        <span><strong data-user-name>Loading...</strong><small>Player profile</small></span>
+      </a>
+    </header>
+
+    <section class="page-hero">
+      <p class="eyebrow">THE PLAYGROUND</p>
+      <h2>Find your next<br>favourite.</h2>
+      <p>Browse the Games Lab collection. Your next adventure is only a click away.</p>
+    </section>
+
+    <section aria-labelledby="library-title">
+      <div class="section-heading games-intro">
+        <div><h2 id="library-title">Game library</h2><p id="game-count" class="game-count"></p></div>
+        <div class="library-tools">
+          <label class="sr-only" for="game-search">Search games</label>
+          <input id="game-search" type="search" placeholder="Search games..." autocomplete="off">
+          <label class="sr-only" for="game-category">Filter by genre</label>
+          <select id="game-category"><option value="all">All genres</option></select>
+          <button class="button secondary" id="clear-filters" type="button">Reset</button>
+        </div>
+      </div>
+      <div class="card-grid" id="games-grid" aria-live="polite"></div>
+      <div class="empty-state glass" id="empty-state" hidden>
+        <strong>No games found</strong>
+        Try another search or reset the filters.
+      </div>
+      <div class="add-games-note">
+        <strong>Add a game in three steps:</strong><br>
+        1. Create a folder such as <code>games/my-game/</code> and put the playable page at <code>games/my-game/index.html</code>.<br>
+        2. Add the custom icon to that folder, for example <code>games/my-game/icon.png</code>.<br>
+        3. Copy an entry in <code>js/games-data.js</code>, set <code>folder: "../games/my-game"</code> and <code>icon: "../games/my-game/icon.png"</code>, then edit the title, genre, description, and colours. The card, icon, genre filter, and Play button update automatically.
+      </div>
+    </section>
+  </main>
+
+  <nav class="dock glass" aria-label="Main navigation">
+    <a href="./dashboard.html" aria-label="Home" title="Home">⌂</a>
+    <a class="active" href="./games.html" aria-label="Games" title="Games" aria-current="page">🎮</a>
+    <a href="./local-games.html" aria-label="Local games" title="Local games">🖥️</a>
+    <a href="./community.html" aria-label="Community" title="Community">👥</a>
+    <a href="./updates.html" aria-label="Updates" title="Updates">◷</a>
+    <a href="./profile.html" aria-label="Profile" title="Profile">👤</a>
+    <a href="./settings.html" aria-label="Settings" title="Settings">⚙️</a>
+    <a href="./tutorial.html" aria-label="Tutorial" title="Tutorial">ⓘ</a>
+  </nav>
+  <script src="../js/desktop.js"></script>
+  <script type="module" src="../js/app.js"></script>
+  <script type="module" src="../js/games.js"></script>
+</body>
+</html>

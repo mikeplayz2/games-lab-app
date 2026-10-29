@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#071226">
+  <meta name="description" content="Download Games Lab for Windows. Discover and play original games in one desktop app.">
+  <link rel="icon" type="image/png" href="./assets/logo.png">
+  <title>Download Games Lab</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: "Segoe UI", Arial, sans-serif;
+      color: #f7f9ff;
+      background: #070b15;
+      --muted: #aab6cb;
+      --line: rgba(224, 232, 255, .16);
+      --blue: #70a5ff;
+      --cyan: #38d4ee;
+    }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    body {
+      min-width: 320px;
+      min-height: 100vh;
+      min-height: 100svh;
+      margin: 0;
+      overflow-x: hidden;
+      background:
+        radial-gradient(ellipse at 50% 42%, rgba(35, 101, 190, .19), transparent 35%),
+        linear-gradient(145deg, #050810, #0a1020 54%, #080d18);
+    }
+    body::before {
+      position: fixed;
+      z-index: -1;
+      inset: -18%;
+      background: url("./assets/logo.png") center / min(72vmin, 700px) no-repeat;
+      content: "";
+      filter: blur(48px) saturate(135%);
+      opacity: .2;
+      transform: scale(1.12);
+      pointer-events: none;
+    }
+    body::after {
+      position: fixed;
+      z-index: -1;
+      inset: 0;
+      background: radial-gradient(ellipse at center, transparent 10%, rgba(3, 6, 13, .52) 78%);
+      content: "";
+      pointer-events: none;
+    }
+    a { color: inherit; }
+    a:focus-visible { outline: 3px solid var(--cyan); outline-offset: 5px; }
+    .download-screen {
+      display: grid;
+      min-height: 100vh;
+      min-height: 100svh;
+      place-items: center;
+      padding: 34px 22px;
+    }
+    .download-card {
+      display: flex;
+      width: min(440px, 100%);
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+    .app-icon {
+      display: block;
+      width: clamp(138px, 24vw, 182px);
+      height: auto;
+      aspect-ratio: 1;
+      border: 1px solid rgba(220, 237, 255, .3);
+      border-radius: 30px;
+      box-shadow: 0 24px 80px rgba(27, 119, 222, .3), 0 0 72px rgba(42, 166, 230, .17);
+      object-fit: cover;
+    }
+    .eyebrow {
+      margin: 29px 0 8px;
+      color: #a9c5ef;
+      font-size: .73rem;
+      font-weight: 800;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+    h1 {
+      margin: 0;
+      font-size: clamp(2rem, 6vw, 2.7rem);
+      font-weight: 780;
+      letter-spacing: -.055em;
+      line-height: 1.06;
+    }
+    .byline { margin: 8px 0 0; color: var(--muted); font-size: .94rem; }
+    .download-state {
+      display: flex;
+      min-height: 26px;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      margin-top: 25px;
+      color: #dce8f9;
+      font-size: .9rem;
+    }
+    .state-indicator {
+      width: 9px;
+      height: 9px;
+      flex: 0 0 9px;
+      border-radius: 50%;
+      background: #91a0b7;
+    }
+    .download-state[data-state="ready"] .state-indicator {
+      background: #5ae0b0;
+      box-shadow: 0 0 14px rgba(90, 224, 176, .65);
+    }
+    .download-state[data-state="downloading"] .state-indicator,
+    .download-state[data-state="checking"] .state-indicator {
+      background: var(--cyan);
+      animation: pulse 1.1s ease-in-out infinite;
+    }
+    .download-state[data-state="error"] .state-indicator { background: #ff9a9a; }
+    .progress-track {
+      width: min(310px, 100%);
+      height: 4px;
+      overflow: hidden;
+      margin-top: 15px;
+      border-radius: 999px;
+      background: rgba(210, 225, 248, .16);
+    }
+    .progress-track span {
+      display: block;
+      width: 38%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--blue), var(--cyan));
+      box-shadow: 0 0 15px rgba(56, 212, 238, .6);
+      animation: progress 1.35s ease-in-out infinite;
+    }
+    .download-button {
+      display: inline-flex;
+      min-width: 220px;
+      min-height: 50px;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 23px;
+      padding: 0 21px;
+      border: 1px solid rgba(218, 237, 255, .25);
+      border-radius: 14px;
+      background: linear-gradient(130deg, #337deb, #169fc9);
+      box-shadow: 0 10px 28px rgba(27, 130, 221, .24), inset 0 1px 0 rgba(255,255,255,.25);
+      color: #fff;
+      font-size: .93rem;
+      font-weight: 750;
+      text-decoration: none;
+      transition: transform .18s, filter .18s, opacity .18s;
+    }
+    .download-button:hover { transform: translateY(-2px); filter: brightness(1.1); }
+    .download-button[aria-disabled="true"] { opacity: .55; pointer-events: none; }
+    .download-button svg { width: 19px; height: 19px; }
+    .release-meta {
+      min-height: 20px;
+      margin: 13px 0 0;
+      color: #aab6cb;
+      font-size: .78rem;
+      line-height: 1.5;
+    }
+    .release-link { margin-top: 9px; color: #b7d5ff; font-size: .8rem; text-decoration: none; }
+    .release-link:hover { color: white; }
+    @keyframes pulse { 50% { opacity: .35; transform: scale(.78); } }
+    @keyframes progress {
+      from { transform: translateX(-115%); }
+      to { transform: translateX(275%); }
+    }
+    @media (max-width: 480px) {
+      .download-screen { padding: 26px 18px; }
+      .app-icon { border-radius: 25px; }
+      .eyebrow { margin-top: 24px; }
+      .download-state { font-size: .84rem; }
+      .download-button { width: min(100%, 310px); }
+    }
+    @media (max-height: 500px) {
+      .download-screen { padding: 6px 18px; }
+      .app-icon { width: 92px; border-radius: 20px; }
+      .eyebrow { margin: 12px 0 5px; font-size: .64rem; }
+      h1 { font-size: clamp(1.7rem, 5vw, 2.1rem); }
+      .byline { margin-top: 4px; }
+      .download-state { min-height: 20px; margin-top: 12px; font-size: .8rem; }
+      .progress-track { margin-top: 8px; }
+      .download-button { min-height: 42px; margin-top: 12px; }
+      .release-meta { min-height: 16px; margin-top: 8px; font-size: .7rem; }
+      .release-link { margin-top: 4px; font-size: .72rem; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="download-screen">
+    <section class="download-card" aria-labelledby="page-title">
+      <img class="app-icon" src="./assets/logo.png" alt="Games Lab app icon" width="182" height="182">
+      <p class="eyebrow">Windows desktop app</p>
+      <h1 id="page-title">Games Lab</h1>
+      <p class="byline">by Games Lab</p>
+      <div class="download-state" id="download-state" data-state="checking">
+        <span class="state-indicator" aria-hidden="true"></span>
+        <span id="download-status" role="status" aria-live="polite">Checking for the latest installer…</span>
+      </div>
+      <div class="progress-track" id="download-progress" role="progressbar" aria-label="Installer download status" aria-valuetext="Starting download" hidden>
+        <span aria-hidden="true"></span>
+      </div>
+      <a class="download-button" id="download-button" href="#" target="_blank" rel="noopener" aria-disabled="true" tabindex="-1">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3.5v11m0 0 4.2-4.2M12 14.5l-4.2-4.2M5 16v3.5h14V16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span id="download-label">Loading installer…</span>
+      </a>
+      <p class="release-meta" id="release-meta">Windows 10 or 11 · 64-bit · Free</p>
+      <a class="release-link" id="release-link" href="https://github.com/mikeplayz2/games-lab-app/releases" hidden>View all releases</a>
+    </section>
+  </main>
+  <script>
+    const releaseUrl = "https://github.com/mikeplayz2/games-lab-app/releases";
+    const downloadButton = document.getElementById("download-button");
+    const downloadLabel = document.getElementById("download-label");
+    const downloadState = document.getElementById("download-state");
+    const downloadStatus = document.getElementById("download-status");
+    const downloadProgress = document.getElementById("download-progress");
+    const releaseMeta = document.getElementById("release-meta");
+    const releaseLink = document.getElementById("release-link");
+    let installerUrl = "";
+
+    function showReleaseError(message) {
+      downloadState.dataset.state = "error";
+      downloadStatus.textContent = message;
+      downloadLabel.textContent = "Installer unavailable";
+      releaseLink.hidden = false;
+    }
+
+    downloadButton.addEventListener("click", (event) => {
+      if (!installerUrl) {
+        event.preventDefault();
+        return;
+      }
+
+      downloadState.dataset.state = "downloading";
+      downloadStatus.textContent = "Downloading Games Lab for Windows…";
+      downloadProgress.hidden = false;
+      downloadProgress.setAttribute("aria-valuetext", "Your browser is starting the installer download");
+      downloadLabel.textContent = "Download started";
+      releaseMeta.textContent = "Your download should begin shortly.";
+    });
+
+    fetch("https://api.github.com/repos/mikeplayz2/games-lab-app/releases/latest", {
+      headers: { Accept: "application/vnd.github+json" }
+    }).then((response) => {
+      if (!response.ok) throw new Error(`Release lookup returned ${response.status}`);
+      return response.json();
+    }).then((release) => {
+      const installer = release.assets?.find((asset) =>
+        /^Games-Lab-Setup-.+\.exe$/i.test(asset.name)
+        && typeof asset.browser_download_url === "string"
+      );
+      if (!installer) {
+        showReleaseError("The latest release does not include a Windows installer.");
+        return;
+      }
+
+      installerUrl = installer.browser_download_url;
+      downloadButton.href = installerUrl;
+      downloadButton.removeAttribute("aria-disabled");
+      downloadButton.removeAttribute("tabindex");
+      downloadButton.setAttribute("aria-label", `Download Games Lab ${release.tag_name} for Windows`);
+      downloadState.dataset.state = "ready";
+      downloadStatus.textContent = "Ready to download";
+      downloadLabel.textContent = `Download for Windows · ${release.tag_name}`;
+      const sizeMb = (installer.size / (1024 * 1024)).toFixed(0);
+      releaseMeta.textContent = `${release.tag_name} · ${sizeMb} MB · Windows 10 or 11 · 64-bit`;
+      releaseLink.href = release.html_url || releaseUrl;
+      releaseLink.textContent = "Release details";
+      releaseLink.hidden = false;
+    }).catch((error) => {
+      console.warn("Could not check for the latest Games Lab release.", error);
+      showReleaseError("Could not load the latest installer. Try the releases page.");
+    });
+  </script>
+</body>
+</html>

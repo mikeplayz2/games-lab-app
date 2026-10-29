@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#071226">
+  <title>Tutorial | Games Lab</title>
+  <link rel="stylesheet" href="../css/site.css">
+  <style>
+    .guide-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .guide-card { padding: 22px; border-radius: 20px; }
+    .guide-number { display: grid; width: 38px; height: 38px; margin-bottom: 15px; place-items: center; border: 1px solid rgba(147,197,253,.28); border-radius: 12px; background: var(--accent-glow); color: var(--blue); font-weight: 800; }
+    .guide-card h3 { margin: 0 0 8px; font-size: 1.08rem; }
+    .guide-card p, .guide-card li { color: var(--muted); font-size: .9rem; line-height: 1.7; }
+    .guide-card p { margin: 0; }
+    .guide-card ul { margin: 10px 0 0; padding-left: 19px; }
+    .guide-card a { color: #bfdbfe; }
+    .guide-note { margin-top: 18px; padding: 18px 20px; border: 1px solid rgba(147,197,253,.18); border-radius: 17px; background: rgba(59,130,246,.08); color: #d3deec; font-size: .88rem; line-height: 1.7; }
+    .guide-note strong { color: white; }
+    @media (max-width: 650px) { .guide-grid { grid-template-columns: 1fr; } .guide-card { padding: 19px; } }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <header class="app-header">
+      <a class="brand" href="./dashboard.html">
+        <img src="../assets/logo.png" alt="">
+        <span><h1>Games Lab</h1><p>Play. Create. Discover.</p></span>
+      </a>
+      <a class="user-chip" href="./profile.html" aria-label="Open your profile">
+        <img data-user-avatar src="../assets/logo.png" alt="">
+        <span><strong data-user-name>Loading...</strong><small>Player profile</small></span>
+      </a>
+    </header>
+
+    <section class="page-hero">
+      <p class="eyebrow">YOUR QUICK-START GUIDE</p>
+      <h2>Make yourself<br>at home.</h2>
+      <p>Find a game, share something you made, and make Games Lab feel like yours.</p>
+    </section>
+
+    <section aria-label="Getting started">
+      <div class="guide-grid">
+        <article class="guide-card glass">
+          <span class="guide-number">01</span>
+          <h3>Find something to play</h3>
+          <p>Open <a href="./games.html">Games</a> from the navigation. Browse the collection, search by name, or filter by genre. Visit <a href="./local-games.html">Local games</a> to scan common game folders on this PC and launch installed Windows games.</p>
+        </article>
+        <article class="guide-card glass">
+          <span class="guide-number">02</span>
+          <h3>Share a community game</h3>
+          <p>Open <a href="./community.html">Community</a>, sign in, and fill out the publish form. Pick a clear title, then either provide an HTTPS game page or paste a self-contained HTML game. Check your submission in <strong>My submissions</strong>.</p>
+          <ul>
+            <li>Only publish games you made or have permission to share.</li>
+            <li>HTML is limited to 20,000 characters and plays in a sandbox.</li>
+            <li>Some websites block embedding; use their link to open the game separately.</li>
+          </ul>
+        </article>
+        <article class="guide-card glass">
+          <span class="guide-number">03</span>
+          <h3>Set up your player profile</h3>
+          <p>Visit <a href="./profile.html">Profile</a> to update your player name or picture. Your name and avatar are shown with your community games. Use <a href="./settings.html">Settings</a> to adjust the app accent colour, compact layout, and motion.</p>
+        </article>
+        <article class="guide-card glass">
+          <span class="guide-number">04</span>
+          <h3>Keep the app up to date</h3>
+          <p>Installed versions check for releases at launch and while the app is open. If an update is available, review it and choose when to download and restart. You can also open <a href="./settings.html">Settings</a> to check manually.</p>
+        </article>
+      </div>
+      <aside class="guide-note">
+        <strong>Community publishing setup:</strong> uploads need Firestore enabled and the project's <code>firestore.rules</code> published in Firebase Console. If a publish takes longer than 15 seconds, it may still complete in the background. Check <strong>My submissions</strong>; retrying the same form is safe.
+      </aside>
+    </section>
+  </main>
+
+  <nav class="dock glass" aria-label="Main navigation">
+    <a href="./dashboard.html" aria-label="Home" title="Home">⌂</a>
+    <a href="./games.html" aria-label="Games" title="Games">🎮</a>
+    <a href="./local-games.html" aria-label="Local games" title="Local games">🖥️</a>
+    <a href="./community.html" aria-label="Community" title="Community">👥</a>
+    <a href="./updates.html" aria-label="Updates" title="Updates">◷</a>
+    <a href="./profile.html" aria-label="Profile" title="Profile">👤</a>
+    <a href="./settings.html" aria-label="Settings" title="Settings">⚙️</a>
+    <a class="active" href="./tutorial.html" aria-label="Tutorial" title="Tutorial" aria-current="page">ⓘ</a>
+  </nav>
+  <script src="../js/desktop.js"></script>
+  <script type="module" src="../js/app.js"></script>
+</body>
+</html>

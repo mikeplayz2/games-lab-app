@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#19152b">
+  <title>Spider Solitaire | Games Lab</title>
+  <link rel="stylesheet" href="../../css/mini-games.css">
+  <style>
+    :root { --game-accent: #c4a4ff; }
+    .spider-top { min-width: 660px; }
+    .spider-scroll { padding-bottom: 12px; }
+    .spider-column { min-height: 430px; }
+    .spider-column .pile-placeholder { position: absolute; inset: 0; min-height: auto; }
+    .spider-deck { display: grid; width: 58px; height: 81px; border: 1px solid #aeb9ca; border-radius: 9px; background: repeating-linear-gradient(45deg, #293353 0 5px, #3a466c 5px 10px); color: white; font-size: 1.35rem; cursor: pointer; }
+    .spider-deck span { align-self: center; justify-self: center; }
+    .spider-completed .completed-run { display: grid; width: 38px; height: 51px; place-items: center; border: 1px solid rgba(255,255,255,.32); border-radius: 7px; background: rgba(196,164,255,.14); color: #e6d9ff; font-size: 1.1rem; }
+    .suit-select { color-scheme: dark; }
+  </style>
+</head>
+<body>
+  <main class="game-page">
+    <header class="game-topbar">
+      <a class="game-back" href="../../pages/games.html">← Back to games</a>
+      <span class="game-brand"><img src="../../assets/logo.png" alt=""> Games Lab</span>
+    </header>
+    <section class="game-intro">
+      <span class="game-icon" aria-hidden="true">🕷️</span>
+      <p class="game-eyebrow">BUILD THE RUN · CLEAR THE WEB</p>
+      <h1>Spider Solitaire</h1>
+      <p>Arrange descending runs, complete a suit, and clear all 104 cards.</p>
+    </section>
+    <section class="game-panel" aria-label="Spider Solitaire">
+      <div class="game-stats" aria-live="polite">
+        <div class="game-stat"><strong id="moves">0</strong><span>MOVES</span></div>
+        <div class="game-stat"><strong id="stock-count">50</strong><span>STOCK CARDS</span></div>
+        <div class="game-stat"><strong id="runs">0 / 8</strong><span>COMPLETED RUNS</span></div>
+      </div>
+      <p class="game-message" id="message" role="status">Build a same-suit sequence from king down to ace to clear a run.</p>
+      <div class="cards-scroll spider-scroll">
+        <div class="spider-row spider-top">
+          <div><p class="card-label">Stock · deal 10</p><div id="stock"></div></div>
+          <div class="spider-completed" id="completed" aria-label="Completed runs"></div>
+          <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+        </div>
+        <div class="spider-columns" id="columns" aria-label="Tableau columns"></div>
+      </div>
+      <div class="game-controls">
+        <label for="suits" class="game-note">Difficulty</label>
+        <select id="suits" class="suit-select" aria-label="Spider Solitaire suit difficulty">
+          <option value="1">1 suit · Beginner</option>
+          <option value="2">2 suits · Intermediate</option>
+          <option value="4">4 suits · Expert</option>
+        </select>
+        <button class="primary" id="new-game" type="button">New deal</button>
+        <button id="undo" type="button">Undo</button>
+        <a href="../../pages/games.html">Game library</a>
+      </div>
+      <p class="game-instructions">Tap a face-up card to select its same-suit descending run, then tap a column with a card one rank higher, or an empty column. Deal 10 cards from the stock when ready; every column must be occupied.</p>
+    </section>
+    <p class="game-footer">Spider Solitaire · Choose a suit count that suits you.</p>
+  </main>
+  <script>
+    const allSuits = ["♠", "♥", "♣", "♦"];
+    const rankNames = ["", "A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
+    const columnsElement = document.getElementById("columns");
+    const stockElement = document.getElementById("stock");
+    const completedElement = document.getElementById("completed");
+    const message = document.getElementById("message");
+    let state;
+    let selected = null;
+    let history = [];
+
+    function shuffle(deck) {
+      for (let index = deck.length - 1; index > 0; index -= 1) {
+        const other = Math.floor(Math.random() * (index + 1));
+        [deck[index], deck[other]] = [deck[other], deck[index]];
+      }
+      return deck;
+    }
+
+    function snapshot() {
+      history.push(JSON.stringify(state));
+      if (history.length > 100) history.shift();
+    }
+
+    function isRun(cards) {
+      return cards.length > 0 && cards.every((card, index) => card.faceUp
+        && (index === cards.length - 1 || (card.suit === cards[index + 1].suit && card.rank === cards[index + 1].rank + 1)));
+    }
+
+    function makeCard(card, isSelected, onClick) {
+      const button = document.createElement("button");
+      const red = card.suit === "♥" || card.suit === "♦";
+      button.type = "button";
+      button.className = `playing-card ${red ? "red" : "black"}${isSelected ? " selected" : ""}`;
+      button.setAttribute("aria-label", `${rankNames[card.rank]} of ${card.suit}`);
+      button.setAttribute("aria-pressed", String(isSelected));
+      const corner = document.createElement("span");
+      corner.className = "card-corner";
+      corner.textContent = `${rankNames[card.rank]}${card.suit}`;
+      const center = document.createElement("span");
+      center.className = "card-center";
+      center.textContent = card.suit;
+      button.append(corner, center);
+      button.addEventListener("click", (event) => { event.stopPropagation(); onClick(); });
+      return button;
+    }
+
+    function sourceRun() {
+      return selected ? state.tableau[selected.column].slice(selected.index) : [];
+    }
+
+    function clearCompletedRuns() {
+      let totalCleared = 0;
+      for (const column of state.tableau) {
+        let runStart;
+        do {
+          runStart = column.findIndex((card, index) => {
+            const run = column.slice(index, index + 13);
+            return run.length === 13 && run[0].rank === 13 && run.every((item, offset) =>
+              item.faceUp && item.suit === run[0].suit && item.rank === 13 - offset);
+          });
+          if (runStart !== -1) {
+            column.splice(runStart, 13);
+            state.completed += 1;
+            totalCleared += 1;
+            const exposed = column[column.length - 1];
+            if (exposed) exposed.faceUp = true;
+          }
+        } while (runStart !== -1);
+      }
+      return totalCleared;
+    }
+
+    function selectCard(columnIndex, cardIndex) {
+      const column = state.tableau[columnIndex];
+      if (!column[cardIndex].faceUp) return;
+      if (selected && (selected.column !== columnIndex || selected.index !== cardIndex)) {
+        if (moveRun(columnIndex, cardIndex)) return;
+      }
+      if (selected && selected.column === columnIndex && selected.index === cardIndex) selected = null;
+      else selected = { column: columnIndex, index: cardIndex };
+      message.textContent = selected
+        ? isRun(sourceRun()) ? "Run selected. Choose a destination column." : "That stack does not match by suit and rank."
+        : "Selection cleared.";
+      render();
+    }
+
+    function moveRun(destinationIndex, targetCardIndex = null) {
+      if (!selected) return false;
+      const run = sourceRun();
+      if (!isRun(run)) { message.textContent = "Only same-suit descending runs can move together."; return false; }
+      if (selected.column === destinationIndex) return false;
+      const destination = state.tableau[destinationIndex];
+      if (targetCardIndex !== null && targetCardIndex !== destination.length - 1) return false;
+      const target = targetCardIndex === null ? destination[destination.length - 1] : destination[targetCardIndex];
+      if (target && target.rank !== run[0].rank + 1) {
+        message.textContent = "Place the run on a card one rank higher.";
+        return false;
+      }
+      if (!destination.length && targetCardIndex !== null) return false;
+
+      snapshot();
+      const source = state.tableau[selected.column];
+      const moved = source.splice(selected.index);
+      const exposed = source[source.length - 1];
+      if (exposed) exposed.faceUp = true;
+      destination.push(...moved);
+      selected = null;
+      state.moves += 1;
+      const cleared = clearCompletedRuns();
+      if (state.completed === 8) {
+        message.textContent = "All eight runs cleared! You won Spider Solitaire!";
+      } else if (cleared) {
+        message.textContent = `${cleared} full ${cleared === 1 ? "run" : "runs"} cleared from the web!`;
+      } else {
+        message.textContent = "Run moved.";
+      }
+      render();
+      return true;
+    }
+
+    function dealRow() {
+      if (state.stock.length < 10) { message.textContent = "The stock is empty. Finish the runs already in play."; return; }
+      if (state.tableau.some((column) => column.length === 0)) {
+        message.textContent = "Fill every empty column before dealing another row.";
+        return;
+      }
+      snapshot();
+      for (const column of state.tableau) {
+        const card = state.stock.pop();
+        card.faceUp = true;
+        column.push(card);
+      }
+      state.moves += 1;
+      selected = null;
+      message.textContent = "Ten new cards dealt. Find the next run.";
+      render();
+    }
+
+    function render() {
+      stockElement.replaceChildren();
+      if (state.stock.length) {
+        const stockButton = document.createElement("button");
+        stockButton.type = "button";
+        stockButton.className = "spider-deck";
+        stockButton.setAttribute("aria-label", `Deal 10 cards, ${state.stock.length} cards remaining`);
+        const back = document.createElement("span");
+        back.textContent = "🕷";
+        stockButton.append(back);
+        stockButton.addEventListener("click", dealRow);
+        stockElement.append(stockButton);
+      } else {
+        const empty = document.createElement("span");
+        empty.className = "game-note";
+        empty.textContent = "Empty";
+        stockElement.append(empty);
+      }
+
+      completedElement.replaceChildren(...Array.from({ length: state.completed }, () => {
+        const badge = document.createElement("span");
+        badge.className = "completed-run";
+        badge.textContent = "K→A";
+        badge.setAttribute("aria-label", "Completed king-to-ace run");
+        return badge;
+      }));
+
+      columnsElement.replaceChildren(...state.tableau.map((column, columnIndex) => {
+        const pile = document.createElement("div");
+        pile.className = "spider-column";
+        pile.setAttribute("aria-label", `Tableau column ${columnIndex + 1}`);
+        column.forEach((card, cardIndex) => {
+          const button = document.createElement("button");
+          if (!card.faceUp) {
+            button.type = "button";
+            button.className = "playing-card face-down";
+            button.setAttribute("aria-label", "Face-down card");
+          } else {
+            const cardButton = makeCard(card, selected?.column === columnIndex && selected.index === cardIndex, () => selectCard(columnIndex, cardIndex));
+            button.replaceWith(cardButton);
+            button.className = "";
+            pile.append(cardButton);
+          }
+          if (!card.faceUp) pile.append(button);
+          const cardElement = card.faceUp ? pile.lastElementChild : button;
+          cardElement.style.top = `${column.slice(0, cardIndex).reduce((offset, previous) => offset + (previous.faceUp ? 22 : 14), 0)}px`;
+        });
+        pile.addEventListener("click", () => { if (!column.length && selected) moveRun(columnIndex); });
+        return pile;
+      }));
+
+      document.getElementById("moves").textContent = String(state.moves);
+      document.getElementById("stock-count").textContent = String(state.stock.length);
+      document.getElementById("runs").textContent = `${state.completed} / 8`;
+      document.getElementById("undo").disabled = history.length === 0;
+    }
+
+    function newGame() {
+      const suitCount = Number(document.getElementById("suits").value);
+      const selectedSuits = allSuits.slice(0, suitCount);
+      const deck = [];
+      for (let copy = 0; copy < 8 / suitCount; copy += 1) {
+        for (const suit of selectedSuits) {
+          for (let rank = 1; rank <= 13; rank += 1) deck.push({ rank, suit, faceUp: false });
+        }
+      }
+      shuffle(deck);
+      const tableau = Array.from({ length: 10 }, (_, columnIndex) => {
+        const count = columnIndex < 4 ? 6 : 5;
+        const column = Array.from({ length: count }, () => deck.pop());
+        column[column.length - 1].faceUp = true;
+        return column;
+      });
+      state = { stock: deck, tableau, completed: 0, moves: 0 };
+      selected = null;
+      history = [];
+      message.textContent = "Build a same-suit sequence from king down to ace to clear a run.";
+      render();
+    }
+
+    document.getElementById("undo").addEventListener("click", () => {
+      if (!history.length) return;
+      state = JSON.parse(history.pop());
+      selected = null;
+      message.textContent = "Last move undone.";
+      render();
+    });
+    document.getElementById("new-game").addEventListener("click", newGame);
+    document.getElementById("suits").addEventListener("change", newGame);
+    newGame();
+  </script>
+</body>
+</html>

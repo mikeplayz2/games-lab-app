@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#181b2d">
+  <title>Garden Galaxy | Games Lab</title>
+  <link rel="stylesheet" href="../../css/mini-games.css">
+  <style>
+    :root { --game-accent: #f5d774; }
+    .garden-board { display: grid; width: min(100%, 620px); grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 0 auto; padding: 14px; border: 1px solid rgba(245,215,116,.22); border-radius: 22px; background: radial-gradient(ellipse at center, #394635, #202b30 72%); }
+    .garden-plot { display: grid; min-height: 135px; align-content: center; justify-items: center; gap: 6px; border: 1px solid rgba(255,255,255,.1); border-radius: 16px; background: rgba(15,27,31,.7); color: white; text-align: center; cursor: pointer; transition: transform .16s, border-color .16s; }
+    .garden-plot:hover { transform: translateY(-2px); border-color: var(--game-accent); }
+    .garden-plot .plant { font-size: 2rem; }
+    .garden-plot small { color: #c6d0bc; font-size: .7rem; }
+    .garden-plot.ready { border-color: rgba(245,215,116,.6); background: rgba(103,95,42,.35); }
+    .seed-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 12px 0; }
+    .seed-row button { min-height: 39px; padding: 0 11px; border: 1px solid var(--line); border-radius: 10px; background: rgba(255,255,255,.06); color: white; cursor: pointer; }
+    .seed-row button[aria-pressed="true"] { border-color: var(--game-accent); background: rgba(245,215,116,.14); }
+    @media (max-width: 520px) { .garden-board { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 9px; } .garden-plot { min-height: 115px; } }
+  </style>
+</head>
+<body>
+  <main class="game-page">
+    <header class="game-topbar">
+      <a class="game-back" href="../../pages/games.html">← Back to games</a>
+      <span class="game-brand"><img src="../../assets/logo.png" alt=""> Games Lab</span>
+    </header>
+    <section class="game-intro">
+      <span class="game-icon" aria-hidden="true">🌱</span>
+      <p class="game-eyebrow">A LITTLE PATCH OF SPACE</p>
+      <h1>Garden Galaxy</h1>
+      <p>Plant a peaceful asteroid garden and harvest a sky full of stardust.</p>
+    </section>
+    <section class="game-panel" aria-label="Garden Galaxy planting game">
+      <div class="game-stats" aria-live="polite">
+        <div class="game-stat"><strong id="stardust">0</strong><span>STARDUST</span></div>
+        <div class="game-stat"><strong id="day">1</strong><span>GARDEN DAY</span></div>
+        <div class="game-stat"><strong id="best">0</strong><span>BEST HARVEST</span></div>
+      </div>
+      <p class="game-message" id="message" role="status">Choose a seed, plant a plot, and water your garden to help it grow.</p>
+      <div class="seed-row" role="group" aria-label="Choose a seed">
+        <button type="button" data-seed="comet" aria-pressed="true">🍓 Comet berry · 2 days · 2 ✦</button>
+        <button type="button" data-seed="moonflower" aria-pressed="false">🌙 Moonflower · 3 days · 4 ✦</button>
+        <button type="button" data-seed="lotus" aria-pressed="false">🪷 Cosmic lotus · 4 days · 6 ✦</button>
+      </div>
+      <div class="garden-board" id="garden" aria-label="Four garden plots"></div>
+      <div class="game-controls">
+        <button class="primary" id="water" type="button">💧 Water garden · next day</button>
+        <button id="restart" type="button">Start fresh</button>
+        <a href="../../pages/games.html">Game library</a>
+      </div>
+      <p class="game-instructions">Pick a seed and tap an empty plot. Water the garden to advance a day, then harvest any ripe plants for stardust. You can tend several plots at once.</p>
+    </section>
+    <p class="game-footer">Garden Galaxy · Your harvest is saved on this device.</p>
+  </main>
+  <script>
+    const crops = {
+      comet: { name: "Comet berry", icon: "🍓", days: 2, yield: 2 },
+      moonflower: { name: "Moonflower", icon: "🌙", days: 3, yield: 4 },
+      lotus: { name: "Cosmic lotus", icon: "🪷", days: 4, yield: 6 }
+    };
+    const garden = document.getElementById("garden");
+    const message = document.getElementById("message");
+    const bestKey = "games-lab-garden-galaxy-best";
+    let plots = Array(4).fill(null);
+    let selectedCrop = "comet";
+    let stardust = 0;
+    let day = 1;
+    let best = 0;
+
+    function readBest() {
+      try { return Number(localStorage.getItem(bestKey)) || 0; }
+      catch (error) { console.warn("Could not read the saved Garden Galaxy score.", error); return 0; }
+    }
+
+    function render() {
+      document.getElementById("stardust").textContent = String(stardust);
+      document.getElementById("day").textContent = String(day);
+      document.getElementById("best").textContent = String(best);
+      document.querySelectorAll("[data-seed]").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.seed === selectedCrop)));
+      garden.replaceChildren(...plots.map((plant, index) => {
+        const plot = document.createElement("button");
+        plot.type = "button";
+        plot.className = `garden-plot${plant && plant.remaining === 0 ? " ready" : ""}`;
+        plot.setAttribute("aria-label", plant
+          ? plant.remaining === 0 ? `${crops[plant.type].name} ready to harvest from plot ${index + 1}` : `${crops[plant.type].name}, ${plant.remaining} days until harvest`
+          : `Plant ${crops[selectedCrop].name} in plot ${index + 1}`);
+        const icon = document.createElement("span");
+        icon.className = "plant";
+        icon.textContent = plant ? plant.remaining === 0 ? crops[plant.type].icon : "🌱" : "🟤";
+        const label = document.createElement("small");
+        label.textContent = plant ? plant.remaining === 0 ? "Ready · tap to harvest" : `${crops[plant.type].name} · ${plant.remaining} days`
+          : `Empty · plant ${crops[selectedCrop].name}`;
+        plot.append(icon, label);
+        plot.addEventListener("click", () => usePlot(index));
+        return plot;
+      }));
+    }
+
+    function usePlot(index) {
+      const plant = plots[index];
+      if (!plant) {
+        plots[index] = { type: selectedCrop, remaining: crops[selectedCrop].days };
+        message.textContent = `${crops[selectedCrop].name} planted. Water the garden to help it grow.`;
+      } else if (plant.remaining === 0) {
+        const crop = crops[plant.type];
+        stardust += crop.yield;
+        if (stardust > best) {
+          best = stardust;
+          try { localStorage.setItem(bestKey, String(best)); }
+          catch (error) { console.warn("Could not save the Garden Galaxy score.", error); }
+        }
+        plots[index] = null;
+        message.textContent = `${crop.name} harvested for ${crop.yield} stardust! Plant another seed.`;
+      } else {
+        message.textContent = `${crops[plant.type].name} needs ${plant.remaining} more ${plant.remaining === 1 ? "day" : "days"}.`;
+      }
+      render();
+    }
+
+    document.querySelectorAll("[data-seed]").forEach((button) => button.addEventListener("click", () => {
+      selectedCrop = button.dataset.seed;
+      message.textContent = `${crops[selectedCrop].name} selected. Tap an empty plot to plant it.`;
+      render();
+    }));
+    document.getElementById("water").addEventListener("click", () => {
+      day += 1;
+      for (const plant of plots) if (plant) plant.remaining = Math.max(0, plant.remaining - 1);
+      message.textContent = "Garden watered! Check for blossoms ready to harvest.";
+      render();
+    });
+    document.getElementById("restart").addEventListener("click", () => {
+      plots = Array(4).fill(null);
+      selectedCrop = "comet";
+      stardust = 0;
+      day = 1;
+      message.textContent = "A fresh little world. Choose a seed to plant.";
+      render();
+    });
+    best = readBest();
+    render();
+  </script>
+</body>
+</html>

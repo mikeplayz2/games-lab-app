@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#071226">
+  <title>Community Games | Games Lab</title>
+  <link rel="stylesheet" href="../css/site.css">
+  <style>
+    .community-intro { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 14px; }
+    .community-tools { display: flex; flex-wrap: wrap; gap: 9px; }
+    .community-tools input {
+      width: min(280px, 70vw);
+      min-height: 44px;
+      padding: 0 13px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(255,255,255,.06);
+      color: white;
+    }
+    .community-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 15px; }
+    .community-card { min-width: 0; overflow: hidden; border-radius: 20px; }
+    .community-card-art { display: grid; min-height: 118px; place-items: center; background: radial-gradient(ellipse at center, rgba(96,165,250,.22), transparent 68%), #101b30; font-size: 3.2rem; }
+    .community-card-body { min-width: 0; padding: 16px; }
+    .community-card h3 { margin: 0 0 7px; overflow-wrap: anywhere; font-size: 1.1rem; }
+    .community-description { min-height: 44px; margin: 0; color: var(--muted); font-size: .86rem; line-height: 1.55; overflow-wrap: anywhere; }
+    .creator { display: flex; align-items: center; gap: 9px; min-width: 0; margin-bottom: 13px; }
+    .creator img { width: 36px; height: 36px; flex: 0 0 36px; border: 1px solid var(--line); border-radius: 50%; object-fit: cover; background: rgba(255,255,255,.08); }
+    .creator span { min-width: 0; overflow: hidden; color: #d3deec; font-size: .82rem; text-overflow: ellipsis; white-space: nowrap; }
+    .creator small { display: block; margin-top: 2px; color: var(--muted); font-size: .72rem; }
+    .card-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 14px; }
+    .card-actions .button { min-height: 39px; padding: 0 12px; font-size: .82rem; }
+    .card-actions .button[disabled] { opacity: .6; cursor: wait; }
+    .community-section { margin-top: 28px; }
+    .submission-form { display: grid; gap: 13px; padding: 20px; border-radius: 20px; }
+    .submission-form label, .moderation label { display: grid; gap: 6px; color: #e2e8f0; font-size: .85rem; font-weight: 700; }
+    .submission-form input, .submission-form textarea, .moderation textarea {
+      width: 100%;
+      min-width: 0;
+      padding: 11px 12px;
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      background: rgba(3,10,23,.55);
+      color: white;
+      font: inherit;
+      font-size: .88rem;
+    }
+    .submission-form textarea, .moderation textarea { min-height: 112px; resize: vertical; }
+    .submission-form textarea.code-input { min-height: 210px; font: 12px/1.5 Consolas, monospace; }
+    .submission-form input:focus-visible, .submission-form textarea:focus-visible, .moderation textarea:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+    .submission-kind { display: flex; flex-wrap: wrap; gap: 10px 18px; }
+    .submission-kind label { display: flex; align-items: center; gap: 7px; }
+    .submission-kind input { width: auto; min-height: auto; accent-color: var(--accent); }
+    .field-help, .community-message, .moderation-message { margin: 0; color: var(--muted); font-size: .82rem; line-height: 1.55; overflow-wrap: anywhere; }
+    .community-message { min-height: 22px; }
+    .community-message.error, .moderation-notice { color: #fda4af; }
+    .community-message.success { color: #86efac; }
+    .owner-games { display: grid; gap: 10px; }
+    .owner-game { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 16px; border-radius: 15px; }
+    .owner-game strong { display: block; }
+    .owner-game p { margin: 5px 0 0; color: var(--muted); font-size: .82rem; line-height: 1.5; overflow-wrap: anywhere; }
+    .moderation { display: grid; width: 100%; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+    .moderation textarea { min-height: 72px; }
+    .community-empty { padding: 28px; border-radius: 18px; color: var(--muted); text-align: center; }
+    .community-empty[hidden], [hidden] { display: none !important; }
+    .community-dialog { width: min(1100px, calc(100vw - 28px)); max-width: none; max-height: min(92vh, 900px); padding: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 20px; background: #0b1425; color: white; box-shadow: 0 25px 90px rgba(0,0,0,.65); }
+    .community-dialog::backdrop { background: rgba(1,5,14,.82); backdrop-filter: blur(7px); }
+    .dialog-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+    .dialog-bar strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .dialog-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 8px; }
+    .dialog-actions a, .dialog-actions button { min-height: 36px; padding: 0 11px; border: 1px solid var(--line); border-radius: 9px; background: rgba(255,255,255,.07); color: white; font: inherit; font-size: .8rem; text-decoration: none; cursor: pointer; }
+    .community-frame { display: block; width: 100%; height: min(78vh, 760px); border: 0; background: white; }
+    @media (max-width: 850px) { .community-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 600px) {
+      .community-grid { grid-template-columns: 1fr; }
+      .community-card-art { min-height: 95px; }
+      .community-intro { align-items: flex-start; }
+      .community-tools, .community-tools input { width: 100%; }
+      .owner-game { align-items: flex-start; flex-direction: column; }
+      .dialog-bar { align-items: flex-start; }
+      .dialog-actions { flex-direction: column-reverse; }
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <header class="app-header">
+      <a class="brand" href="./dashboard.html">
+        <img src="../assets/logo.png" alt="">
+        <span><h1>Games Lab</h1><p>Play. Create. Discover.</p></span>
+      </a>
+      <a class="user-chip" href="./profile.html" aria-label="Open your profile">
+        <img data-user-avatar src="../assets/logo.png" alt="">
+        <span><strong data-user-name>Loading...</strong><small>Player profile</small></span>
+      </a>
+    </header>
+
+    <section class="page-hero">
+      <p class="eyebrow">MADE BY PLAYERS</p>
+      <h2>Community<br>arcade.</h2>
+      <p>Discover games shared by the Games Lab community, or bring your own creation to the arcade.</p>
+    </section>
+
+    <section aria-labelledby="browse-heading">
+      <div class="section-heading community-intro">
+        <div><h2 id="browse-heading">Community games</h2><p id="community-count" class="game-count">Loading games...</p></div>
+        <div class="community-tools">
+          <label class="sr-only" for="community-search">Search community games</label>
+          <input id="community-search" type="search" placeholder="Search games or creators..." autocomplete="off">
+        </div>
+      </div>
+      <div class="community-grid" id="community-grid" aria-live="polite"></div>
+      <div class="community-empty glass" id="community-empty" hidden>No community games match that search yet.</div>
+      <p class="community-message" id="browse-message" role="status" aria-live="polite"></p>
+    </section>
+
+    <section class="community-section" aria-labelledby="submit-heading">
+      <div class="section-heading"><div><h2 id="submit-heading">Share a game</h2><p>Your username and profile photo appear with your game.</p></div></div>
+      <form class="submission-form glass" id="submission-form">
+        <label for="game-title">Game name
+          <input id="game-title" name="title" type="text" maxlength="60" required placeholder="A name players will remember">
+        </label>
+        <label for="game-description">Short description
+          <input id="game-description" name="description" type="text" maxlength="240" placeholder="What should players know?" autocomplete="off">
+        </label>
+        <fieldset style="border:0;padding:0;margin:0">
+          <legend class="field-help" style="margin-bottom:8px">How would you like to share it?</legend>
+          <div class="submission-kind">
+            <label><input type="radio" name="source-kind" value="url" checked> Website link</label>
+            <label><input type="radio" name="source-kind" value="html"> Paste HTML</label>
+          </div>
+        </fieldset>
+        <label id="url-field" for="game-url">Website URL
+          <input id="game-url" name="url" type="url" maxlength="2048" placeholder="https://example.com/my-game" autocomplete="url">
+        </label>
+        <label id="html-field" for="game-html" hidden>HTML game code
+          <textarea class="code-input" id="game-html" name="html" maxlength="20000" spellcheck="false" placeholder="<!doctype html>&#10;<html>&#10;  <!-- Paste a self-contained game here -->&#10;</html>"></textarea>
+        </label>
+        <p class="field-help">Only share games you made or have permission to publish. HTML is limited to 20,000 characters and runs in an isolated sandbox. For best compatibility, make it self-contained; external sites may block embedding.</p>
+        <button class="button" id="submit-game" type="submit">Publish community game</button>
+        <p class="community-message" id="submit-message" role="status" aria-live="polite"></p>
+      </form>
+    </section>
+
+    <section class="community-section" aria-labelledby="my-games-heading">
+      <div class="section-heading"><div><h2 id="my-games-heading">My submissions</h2><p>See your published games and any moderator notices.</p></div></div>
+      <div class="owner-games" id="owner-games"></div>
+      <p class="community-message" id="owner-message" role="status" aria-live="polite"></p>
+    </section>
+  </main>
+
+  <nav class="dock glass" aria-label="Main navigation">
+    <a href="./dashboard.html" aria-label="Home" title="Home">⌂</a>
+    <a href="./games.html" aria-label="Games" title="Games">🎮</a>
+    <a href="./local-games.html" aria-label="Local games" title="Local games">🖥️</a>
+    <a class="active" href="./community.html" aria-label="Community" title="Community" aria-current="page">👥</a>
+    <a href="./updates.html" aria-label="Updates" title="Updates">◷</a>
+    <a href="./profile.html" aria-label="Profile" title="Profile">👤</a>
+    <a href="./settings.html" aria-label="Settings" title="Settings">⚙️</a>
+    <a href="./tutorial.html" aria-label="Tutorial" title="Tutorial">ⓘ</a>
+  </nav>
+
+  <dialog class="community-dialog" id="game-dialog" aria-label="Community game player">
+    <div class="dialog-bar">
+      <strong id="dialog-title">Community game</strong>
+      <div class="dialog-actions">
+        <a id="open-game-link" href="#" target="_blank" rel="noopener noreferrer" hidden>Open in browser ↗</a>
+        <button id="close-game" type="button">Close</button>
+      </div>
+    </div>
+    <iframe class="community-frame" id="game-frame" title="Community game player" sandbox="allow-scripts" referrerpolicy="no-referrer"></iframe>
+  </dialog>
+
+  <script type="module" src="../js/app.js"></script>
+  <script type="module" src="../js/community.js"></script>
+</body>
+</html>

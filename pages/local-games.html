@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#090c19">
+  <title>Local Games | Games Lab</title>
+  <link rel="stylesheet" href="../css/site.css">
+  <style>
+    .local-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+    .local-tools input { width: min(270px, 60vw); min-height: 44px; padding: 0 14px; border: 1px solid var(--glass-stroke); border-radius: 13px; background: rgba(255,255,255,.055); color: white; }
+    .local-tools input::placeholder { color: #909cb4; }
+    .local-status { min-height: 24px; margin: 0; color: var(--muted); font-size: .85rem; line-height: 1.6; }
+    .local-status.error { color: #fda4af; }
+    .local-status.success { color: #a7f3d0; }
+    .local-notice { display: flex; align-items: flex-start; gap: 12px; margin: 20px 0 24px; padding: 17px 19px; border: 1px solid rgba(176,197,255,.15); border-radius: 18px; background: rgba(255,255,255,.035); color: var(--muted); font-size: .84rem; line-height: 1.65; }
+    .local-notice strong { color: #edf1ff; }
+    .local-notice-icon { display: grid; width: 35px; height: 35px; flex: 0 0 35px; place-items: center; border: 1px solid rgba(255,255,255,.11); border-radius: 12px; background: rgba(255,255,255,.07); color: #c5d0ff; }
+    .local-games-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 15px; }
+    .local-game-card { position: relative; min-width: 0; overflow: hidden; border-radius: 20px; transition: transform .2s, border-color .2s; }
+    .local-game-card:hover { transform: translateY(-4px); border-color: rgba(182,199,255,.27); }
+    .local-game-art { position: relative; display: grid; min-height: 128px; overflow: hidden; place-items: center; background: radial-gradient(ellipse at 50% 30%, rgba(147,154,255,.29), transparent 62%), linear-gradient(140deg, rgba(91,104,181,.21), rgba(38,60,90,.16)); }
+    .local-game-art::before, .local-game-art::after { position: absolute; width: 140px; height: 140px; border: 1px solid rgba(199,208,255,.13); border-radius: 50%; content: ""; transform: scaleX(1.45); }
+    .local-game-art::after { width: 100px; height: 100px; transform: scaleX(1.5) rotate(34deg); }
+    .local-game-icon { z-index: 1; display: grid; width: 65px; height: 65px; place-items: center; border: 1px solid rgba(255,255,255,.23); border-radius: 21px; background: linear-gradient(145deg, rgba(186,197,255,.3), rgba(85,184,218,.14)); box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 12px 30px rgba(0,0,0,.2); font-size: 1.9rem; }
+    .local-game-body { min-width: 0; padding: 16px; }
+    .local-game-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+    .local-game-heading h3 { min-width: 0; margin: 0; overflow-wrap: anywhere; font-size: 1rem; letter-spacing: -.02em; }
+    .local-game-badge { flex: 0 0 auto; padding: 5px 8px; border: 1px solid rgba(167,243,208,.16); border-radius: 999px; background: rgba(52,211,153,.08); color: #a7f3d0; font-size: .65rem; }
+    .local-game-path { min-height: 34px; margin: 9px 0 13px; overflow: hidden; color: var(--muted); font-size: .74rem; line-height: 1.55; text-overflow: ellipsis; overflow-wrap: anywhere; }
+    .local-game-actions { display: flex; align-items: center; gap: 8px; }
+    .local-game-actions .button { min-height: 38px; padding: 0 13px; font-size: .79rem; }
+    .local-game-actions .hide-game { width: 38px; min-width: 38px; padding: 0; }
+    .local-empty { padding: clamp(30px, 7vw, 58px) 20px; border: 1px dashed rgba(200,211,255,.19); border-radius: 22px; background: rgba(255,255,255,.025); color: var(--muted); text-align: center; }
+    .local-empty-icon { display: grid; width: 58px; height: 58px; margin: 0 auto 15px; place-items: center; border: 1px solid rgba(255,255,255,.14); border-radius: 19px; background: rgba(255,255,255,.055); font-size: 1.55rem; }
+    .local-empty h3 { margin: 0 0 8px; color: #f0f3ff; font-size: 1.15rem; }
+    .local-empty p { max-width: 440px; margin: 0 auto 18px; font-size: .86rem; line-height: 1.65; }
+    .local-empty .button { margin: 0 5px 6px; }
+    .scan-spinner { display: inline-block; width: 13px; height: 13px; margin-right: 7px; border: 2px solid rgba(255,255,255,.35); border-top-color: white; border-radius: 50%; animation: spin .75s linear infinite; vertical-align: -2px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (max-width: 930px) { .local-games-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 600px) {
+      .local-tools { width: 100%; }
+      .local-tools input { width: 100%; }
+      .local-tools .button { flex: 1 1 auto; }
+      .local-games-grid { grid-template-columns: 1fr; }
+      .local-game-art { min-height: 105px; }
+      .local-notice { padding: 14px; }
+    }
+    @media (prefers-reduced-motion: reduce) { .scan-spinner { animation-duration: 1.5s; } }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <header class="app-header">
+      <a class="brand" href="./dashboard.html">
+        <img src="../assets/logo.png" alt="">
+        <span><h1>Games Lab</h1><p>Play. Create. Discover.</p></span>
+      </a>
+      <a class="user-chip" href="./profile.html" aria-label="Open your profile">
+        <img data-user-avatar src="../assets/logo.png" alt="">
+        <span><strong data-user-name>Loading...</strong><small>Player profile</small></span>
+      </a>
+    </header>
+
+    <section class="page-hero">
+      <p class="eyebrow">YOUR LIBRARY, ALL TOGETHER</p>
+      <h2>Every world.<br>One place.</h2>
+      <p>Find games already installed on this computer and launch them from your own local library.</p>
+    </section>
+
+    <div class="local-notice">
+      <span class="local-notice-icon" aria-hidden="true">⌕</span>
+      <span><strong>Private, read-only scan.</strong> Games Lab checks common Steam, Epic, GOG, EA, Xbox, Ubisoft, Riot, and Games folders for Windows game executables. It does not scan personal files or upload anything. Add another game folder if yours is somewhere else.</span>
+    </div>
+
+    <section aria-labelledby="local-library-title">
+      <div class="section-heading">
+        <div><h2 id="local-library-title">Installed on this PC</h2><p id="local-count">Ready to look for your games.</p></div>
+        <div class="local-tools">
+          <label class="sr-only" for="local-search">Search local games</label>
+          <input id="local-search" type="search" placeholder="Search your library..." autocomplete="off">
+          <button class="button secondary" id="add-folder" type="button">＋ Add folder</button>
+          <button class="button" id="scan-games" type="button">⌕ Scan computer</button>
+        </div>
+      </div>
+      <p class="local-status" id="scan-status" role="status" aria-live="polite"></p>
+      <div class="local-games-grid" id="local-games-grid" aria-live="polite"></div>
+      <div class="local-empty glass" id="local-empty">
+        <span class="local-empty-icon" aria-hidden="true">🎮</span>
+        <h3 id="empty-title">Your local library is waiting</h3>
+        <p id="empty-description">Scan this computer to find installed games, or choose a folder where you keep your games.</p>
+        <button class="button" id="empty-scan" type="button">Scan computer</button>
+        <button class="button secondary" id="empty-folder" type="button">Choose a game folder</button>
+      </div>
+    </section>
+  </main>
+
+  <nav class="dock glass" aria-label="Main navigation">
+    <a href="./dashboard.html" aria-label="Home" title="Home">⌂</a>
+    <a href="./games.html" aria-label="Games" title="Games">🎮</a>
+    <a class="active" href="./local-games.html" aria-label="Local games" title="Local games" aria-current="page">🖥️</a>
+    <a href="./community.html" aria-label="Community" title="Community">👥</a>
+    <a href="./updates.html" aria-label="Updates" title="Updates">◷</a>
+    <a href="./profile.html" aria-label="Profile" title="Profile">👤</a>
+    <a href="./settings.html" aria-label="Settings" title="Settings">⚙️</a>
+    <a href="./tutorial.html" aria-label="Tutorial" title="Tutorial">ⓘ</a>
+  </nav>
+  <script src="../js/desktop.js"></script>
+  <script type="module" src="../js/app.js"></script>
+  <script src="../js/local-games.js"></script>
+</body>
+</html>

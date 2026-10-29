@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#102a2a">
+  <title>Dino Dominion: Berry Rush</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: "Segoe UI", Arial, sans-serif;
+      color: #f4fff4;
+      background: #102a2a;
+      --green: #b7ef8b;
+      --muted: #bad1c5;
+    }
+    * { box-sizing: border-box; }
+    body {
+      min-height: 100vh;
+      margin: 0;
+      padding: 22px;
+      background:
+        radial-gradient(ellipse at 50% 0, rgba(80, 188, 118, .24), transparent 42%),
+        linear-gradient(160deg, #102a2a, #12221f 70%, #1d3024);
+    }
+    button, a { font: inherit; }
+    button:focus-visible, a:focus-visible { outline: 3px solid #d5f99c; outline-offset: 3px; }
+    .page { width: min(760px, 100%); margin: 0 auto; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 30px; }
+    .back { color: #d2e7d8; font-size: .9rem; text-decoration: none; }
+    .brand { display: flex; align-items: center; gap: 9px; color: #d2e7d8; font-size: .88rem; }
+    .brand img { width: 30px; height: 30px; border-radius: 9px; }
+    .intro { margin-bottom: 22px; text-align: center; }
+    .intro img { width: 74px; height: 74px; margin-bottom: 13px; border: 1px solid rgba(255,255,255,.2); border-radius: 22px; }
+    .eyebrow { margin: 0 0 8px; color: var(--green); font-size: .72rem; font-weight: 800; letter-spacing: .16em; }
+    h1 { margin: 0; font-size: clamp(2rem, 7vw, 3.2rem); letter-spacing: -.05em; }
+    .intro p:last-child { margin: 10px 0 0; color: var(--muted); line-height: 1.6; }
+    .game-panel { padding: clamp(16px, 4vw, 26px); border: 1px solid rgba(255,255,255,.13); border-radius: 26px; background: rgba(15,35,31,.82); box-shadow: 0 24px 70px rgba(0,0,0,.3); }
+    .scorebar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; margin-bottom: 17px; }
+    .score { padding: 12px 8px; border: 1px solid rgba(255,255,255,.08); border-radius: 14px; background: rgba(255,255,255,.045); text-align: center; }
+    .score strong { display: block; color: var(--green); font-size: 1.35rem; font-variant-numeric: tabular-nums; }
+    .score span { color: var(--muted); font-size: .72rem; }
+    .message { min-height: 24px; margin: 0 0 12px; color: #d7e9d8; font-size: .9rem; text-align: center; }
+    .board {
+      display: grid;
+      width: min(100%, 460px);
+      aspect-ratio: 1;
+      grid-template-columns: repeat(5, 1fr);
+      gap: clamp(5px, 1.7vw, 10px);
+      margin: 0 auto;
+      padding: clamp(8px, 2vw, 13px);
+      border: 1px solid rgba(183,239,139,.16);
+      border-radius: 22px;
+      background:
+        radial-gradient(ellipse at 35% 20%, rgba(116,166,82,.18), transparent 60%),
+        #1a382d;
+    }
+    .patch {
+      display: grid;
+      min-width: 0;
+      place-items: center;
+      border: 1px solid rgba(220,255,190,.09);
+      border-radius: 15px;
+      background: linear-gradient(145deg, #294a38, #213e31);
+      color: #d6efad;
+      font-size: clamp(1.05rem, 5vw, 2rem);
+      cursor: pointer;
+      transition: transform .12s, background .15s, box-shadow .15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .patch:hover:not(:disabled) { transform: scale(1.04); background: #345941; }
+    .patch:active:not(:disabled) { transform: scale(.94); }
+    .patch:disabled { cursor: default; opacity: .64; }
+    .patch.target { border-color: rgba(255,231,141,.45); background: linear-gradient(145deg, #557447, #315c3f); box-shadow: 0 0 20px rgba(183,239,139,.13); animation: pop .24s ease-out; }
+    .patch.danger { background: linear-gradient(145deg, #4a3e34, #403229); }
+    .controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 19px; }
+    .controls button, .controls a { display: inline-flex; min-height: 45px; align-items: center; justify-content: center; padding: 0 17px; border: 1px solid rgba(255,255,255,.14); border-radius: 13px; background: rgba(255,255,255,.07); color: white; font-weight: 750; text-decoration: none; cursor: pointer; }
+    .controls .start { border: 0; background: linear-gradient(135deg, #4aab71, #8acb67); color: #102a1e; }
+    .controls button:disabled { opacity: .55; cursor: default; }
+    .instructions { margin: 18px 0 0; color: var(--muted); font-size: .84rem; line-height: 1.6; text-align: center; }
+    .footer { margin-top: 18px; color: #88a996; font-size: .75rem; text-align: center; }
+    @keyframes pop { from { transform: scale(.72); } to { transform: scale(1); } }
+    @media (max-width: 430px) {
+      body { padding: 16px 12px; }
+      .topbar { margin-bottom: 22px; }
+      .game-panel { border-radius: 21px; }
+      .patch { border-radius: 11px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="topbar">
+      <a class="back" href="../../pages/games.html">← Back to games</a>
+      <span class="brand"><img src="../../assets/logo.png" alt=""> Games Lab</span>
+    </header>
+
+    <section class="intro">
+      <img src="./icon.svg" alt="Dino Dominion icon">
+      <p class="eyebrow">QUICK PLAY · TEST BUILD</p>
+      <h1>Dino Dominion</h1>
+      <p>Help your dino stock up before the storm rolls in.</p>
+    </section>
+
+    <section class="game-panel" aria-label="Berry Rush game">
+      <div class="scorebar" aria-live="polite">
+        <div class="score"><strong id="score">0</strong><span>BERRIES</span></div>
+        <div class="score"><strong id="timer">30</strong><span>SECONDS</span></div>
+        <div class="score"><strong id="best">0</strong><span>BEST</span></div>
+      </div>
+      <p class="message" id="message" role="status">Ready? Start a run and tap the berry before it moves.</p>
+      <div class="board" id="board" aria-label="Game board"></div>
+      <div class="controls">
+        <button class="start" id="start" type="button">Start a run</button>
+        <button id="sound" type="button" aria-pressed="false">🔇 Sound off</button>
+        <a href="../../pages/games.html">Game library</a>
+      </div>
+      <p class="instructions">Tap the 🫐 berry to collect it. Dodge the 🪨 rocks! You have 30 seconds. Works with mouse, touch, and keyboard.</p>
+    </section>
+    <p class="footer">Dino Dominion test build · Progress is saved on this browser.</p>
+  </main>
+  <script>
+    const board = document.getElementById("board");
+    const scoreDisplay = document.getElementById("score");
+    const timerDisplay = document.getElementById("timer");
+    const bestDisplay = document.getElementById("best");
+    const message = document.getElementById("message");
+    const startButton = document.getElementById("start");
+    const soundButton = document.getElementById("sound");
+    const bestKey = "games-lab-dino-dominion-best";
+    const patches = [];
+    let score = 0;
+    let timeLeft = 30;
+    let berryIndex = -1;
+    let runTimer = 0;
+    let running = false;
+    let soundOn = false;
+    let audioContext;
+
+    function readBest() {
+      try {
+        return Number(localStorage.getItem(bestKey)) || 0;
+      } catch (error) {
+        console.warn("Could not read the saved best score.", error);
+        return 0;
+      }
+    }
+
+    function writeBest(value) {
+      try {
+        localStorage.setItem(bestKey, String(value));
+      } catch (error) {
+        console.warn("Could not save the best score.", error);
+      }
+    }
+
+    bestDisplay.textContent = String(readBest());
+
+    function playTone(frequency, duration = 0.09) {
+      if (!soundOn) return;
+      try {
+        audioContext ||= new AudioContext();
+        const oscillator = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        oscillator.frequency.value = frequency;
+        oscillator.type = "sine";
+        gain.gain.setValueAtTime(0.08, audioContext.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + duration);
+        oscillator.connect(gain);
+        gain.connect(audioContext.destination);
+        oscillator.start();
+        oscillator.stop(audioContext.currentTime + duration);
+      } catch (error) {
+        soundOn = false;
+        soundButton.setAttribute("aria-pressed", "false");
+        soundButton.textContent = "🔇 Sound off";
+        console.warn("Sound is unavailable in this browser.", error);
+      }
+    }
+
+    function placeBerry() {
+      const previous = berryIndex;
+      berryIndex = Math.floor(Math.random() * patches.length);
+      if (patches.length > 1 && berryIndex === previous) {
+        berryIndex = (berryIndex + 1 + Math.floor(Math.random() * (patches.length - 1))) % patches.length;
+      }
+      patches.forEach((patch, index) => {
+        patch.classList.toggle("target", index === berryIndex);
+        patch.classList.toggle("danger", index !== berryIndex && index % 4 === (berryIndex + 1) % 4);
+        patch.textContent = index === berryIndex ? "🫐" : index % 4 === (berryIndex + 1) % 4 ? "🪨" : "·";
+        patch.setAttribute("aria-label", index === berryIndex ? "Berry target" : index % 4 === (berryIndex + 1) % 4 ? "Rock hazard" : "Empty ground");
+      });
+    }
+
+    function endRun() {
+      running = false;
+      window.clearInterval(runTimer);
+      runTimer = 0;
+      startButton.disabled = false;
+      startButton.textContent = "Play again";
+      patches.forEach((patch) => { patch.disabled = true; });
+      const best = readBest();
+      if (score > best) {
+        writeBest(score);
+        bestDisplay.textContent = String(score);
+        message.textContent = `New best! You gathered ${score} ${score === 1 ? "berry" : "berries"}. Great run!`;
+      } else {
+        message.textContent = `Run complete! You gathered ${score} ${score === 1 ? "berry" : "berries"}. Give it another go!`;
+      }
+    }
+
+    function collect(index) {
+      if (!running) return;
+      if (index !== berryIndex) {
+        message.textContent = patches[index].classList.contains("danger") ? "Rock dodged! Find the berry." : "No berry there — keep looking!";
+        playTone(180, 0.07);
+        return;
+      }
+      score += 1;
+      scoreDisplay.textContent = String(score);
+      message.textContent = "Nice catch! Find the next berry.";
+      playTone(540 + Math.min(score * 18, 360));
+      placeBerry();
+    }
+
+    for (let index = 0; index < 25; index += 1) {
+      const patch = document.createElement("button");
+      patch.className = "patch";
+      patch.type = "button";
+      patch.disabled = true;
+      patch.textContent = "·";
+      patch.setAttribute("aria-label", "Empty ground");
+      patch.addEventListener("click", () => collect(index));
+      patches.push(patch);
+      board.append(patch);
+    }
+
+    startButton.addEventListener("click", () => {
+      window.clearInterval(runTimer);
+      score = 0;
+      timeLeft = 30;
+      running = true;
+      scoreDisplay.textContent = "0";
+      timerDisplay.textContent = "30";
+      message.textContent = "Go! Tap the berry and keep an eye out for rocks.";
+      startButton.disabled = true;
+      startButton.textContent = "Run in progress";
+      patches.forEach((patch) => { patch.disabled = false; });
+      placeBerry();
+      runTimer = window.setInterval(() => {
+        timeLeft -= 1;
+        timerDisplay.textContent = String(timeLeft);
+        if (timeLeft <= 0) endRun();
+      }, 1000);
+    });
+
+    soundButton.addEventListener("click", () => {
+      soundOn = !soundOn;
+      soundButton.setAttribute("aria-pressed", String(soundOn));
+      soundButton.textContent = soundOn ? "🔊 Sound on" : "🔇 Sound off";
+      if (soundOn) playTone(540);
+    });
+  </script>
+</body>
+</html>
