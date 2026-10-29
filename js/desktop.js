@@ -56,8 +56,51 @@
       background: linear-gradient(135deg,#2563eb,#0ea5e9);
     }
     .desktop-update-toast button:disabled { opacity: .6; cursor: wait; }
+    .desktop-music-panel {
+      position: fixed;
+      z-index: 9999;
+      right: 22px;
+      bottom: 20px;
+      display: grid;
+      width: min(330px, calc(100vw - 32px));
+      gap: 12px;
+      padding: 15px;
+      box-sizing: border-box;
+      border: 1px solid rgba(147, 197, 253, .24);
+      border-radius: 20px;
+      background: rgba(10, 20, 38, .94);
+      color: #f8fafc;
+      box-shadow: 0 18px 55px rgba(0, 0, 0, .4);
+      font: 13px/1.45 "Segoe UI", Arial, sans-serif;
+      backdrop-filter: blur(20px);
+    }
+    .desktop-music-panel[hidden] { display: none; }
+    .desktop-music-heading { display: flex; align-items: center; gap: 9px; color: #b6c4d8; font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+    .desktop-music-disc { display: grid; width: 28px; height: 28px; place-items: center; border: 1px solid rgba(255,255,255,.14); border-radius: 9px; background: linear-gradient(145deg,rgba(37,99,235,.45),rgba(14,165,233,.16)); color: white; font-size: 14px; }
+    .desktop-music-track { min-width: 0; }
+    .desktop-music-track strong, .desktop-music-track span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .desktop-music-track strong { font-size: 14px; }
+    .desktop-music-track span { margin-top: 2px; color: #aebbd0; font-size: 12px; }
+    .desktop-music-controls { display: flex; justify-content: center; gap: 10px; }
+    .desktop-music-controls button {
+      display: grid;
+      width: 38px;
+      height: 36px;
+      place-items: center;
+      border: 1px solid rgba(255,255,255,.13);
+      border-radius: 11px;
+      background: rgba(255,255,255,.07);
+      color: white;
+      font: 17px/1 "Segoe UI Symbol", "Segoe UI", sans-serif;
+      cursor: pointer;
+    }
+    .desktop-music-controls button[data-primary] { border: 0; background: linear-gradient(135deg,#2563eb,#0ea5e9); }
+    .desktop-music-controls button:disabled { opacity: .45; cursor: default; }
+    body.desktop-music-visible .desktop-update-toast { bottom: 170px; }
     @media (max-width: 600px) {
       .desktop-update-toast { right: 16px; bottom: 88px; }
+      .desktop-music-panel { right: 16px; bottom: 88px; }
+      body.desktop-music-visible .desktop-update-toast { bottom: 235px; }
     }
   `;
   document.head.append(style);
@@ -80,6 +123,55 @@
   actions.className = "desktop-update-toast-actions";
   toast.append(heading, description, errorDetails, actions);
   document.body.append(toast);
+
+  const musicPanel = document.createElement("section");
+  musicPanel.className = "desktop-music-panel";
+  musicPanel.hidden = true;
+  musicPanel.setAttribute("role", "group");
+  musicPanel.setAttribute("aria-label", "Now playing controls");
+  const musicHeading = document.createElement("div");
+  musicHeading.className = "desktop-music-heading";
+  const musicDisc = document.createElement("span");
+  musicDisc.className = "desktop-music-disc";
+  musicDisc.setAttribute("aria-hidden", "true");
+  musicDisc.textContent = "♫";
+  musicHeading.append(musicDisc, document.createTextNode("Now playing"));
+  const musicTrack = document.createElement("div");
+  musicTrack.className = "desktop-music-track";
+  const musicTitle = document.createElement("strong");
+  const musicArtist = document.createElement("span");
+  musicTrack.append(musicTitle, musicArtist);
+  const musicControls = document.createElement("div");
+  musicControls.className = "desktop-music-controls";
+  const musicButtons = new Map();
+  for (const [action, label, icon] of [
+    ["previous", "Previous track", "⏮"],
+    ["play-pause", "Play or pause", "⏯"],
+    ["next", "Next track", "⏭"]
+  ]) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.setAttribute("aria-label", label);
+    button.title = label;
+    button.textContent = icon;
+    if (action === "play-pause") button.dataset.primary = "true";
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      try {
+        renderMusic(await desktop.controlMusic(action));
+      } catch (error) {
+        console.error(`Could not ${label.toLowerCase()}.`, error);
+        musicTitle.textContent = "Music controls unavailable";
+        musicArtist.textContent = "Try again in a moment.";
+      } finally {
+        button.disabled = false;
+      }
+    });
+    musicButtons.set(action, button);
+    musicControls.append(button);
+  }
+  musicPanel.append(musicHeading, musicTrack, musicControls);
+  document.body.append(musicPanel);
 
   function updateSettingsStatus(state) {
     const status = document.getElementById("desktop-update-status");
@@ -121,7 +213,7 @@
     errorDetails.open = false;
     errorText.textContent = "";
     toast.hidden = true;
-    if (!state || state.status === "idle" || state.status === "current" || state.status === "development") return;
+    if (!state || state.status === "idle" || state.status === "current" || state.status === "development" || state.status === "checking") return;
 
     if (state.status === "available") {
       heading.textContent = `Games Lab ${state.availableVersion} is ready`;
@@ -184,4 +276,57 @@
       console.error("Could not read app version.", error);
     });
   });
+
+  let musicControlsEnabled = true;
+  let musicRequestRunning = false;
+  let musicPollTimer;
+
+  function renderMusic(state) {
+    if (!musicControlsEnabled || !state || !state.available) {
+      musicPanel.hidden = true;
+      document.body.classList.remove("desktop-music-visible");
+      return;
+    }
+    musicPanel.hidden = false;
+    document.body.classList.add("desktop-music-visible");
+    musicTitle.textContent = state.title || "Now playing";
+    musicArtist.textContent = [state.artist, state.album].filter(Boolean).join(" · ") || state.source || "System media";
+    musicButtons.get("play-pause").disabled = !state.canPlayPause;
+    musicButtons.get("previous").disabled = !state.canPrevious;
+    musicButtons.get("next").disabled = !state.canNext;
+    musicButtons.get("play-pause").textContent = state.status === "Playing" ? "⏸" : "▶";
+  }
+
+  async function refreshMusic() {
+    if (!musicControlsEnabled || musicRequestRunning) return;
+    musicRequestRunning = true;
+    let retryDelay = 7000;
+    try {
+      renderMusic(await desktop.getMusicState());
+    } catch (error) {
+      console.error("Could not read Windows media controls.", error);
+      musicPanel.hidden = !musicControlsEnabled;
+      document.body.classList.toggle("desktop-music-visible", musicControlsEnabled);
+      musicTitle.textContent = "Music controls unavailable";
+      musicArtist.textContent = "Could not read the active media session.";
+      retryDelay = 30000;
+    } finally {
+      musicRequestRunning = false;
+      if (musicControlsEnabled) musicPollTimer = window.setTimeout(refreshMusic, retryDelay);
+    }
+  }
+
+  window.addEventListener("games-lab:music-setting-change", (event) => {
+    musicControlsEnabled = event.detail !== false;
+    if (musicPollTimer) window.clearTimeout(musicPollTimer);
+    if (!musicControlsEnabled) {
+      musicPanel.hidden = true;
+      return;
+    }
+    void refreshMusic();
+  });
+  window.addEventListener("pagehide", () => {
+    if (musicPollTimer) window.clearTimeout(musicPollTimer);
+  }, { once: true });
+  void refreshMusic();
 })();

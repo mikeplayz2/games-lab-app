@@ -1,6 +1,6 @@
 {
   "name": "games-lab",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "Games Lab desktop app",
   "author": "Games Lab",
   "license": "UNLICENSED",
@@ -24,6 +24,7 @@
     "files": [
       "main.js",
       "preload.js",
+      "windows-media-controls.ps1",
       "local-games-scanner.js",
       "release-config.json",
       "pages/**/*",
@@ -35,6 +36,9 @@
     "directories": {
       "output": "release"
     },
+    "asarUnpack": [
+      "windows-media-controls.ps1"
+    ],
     "artifactName": "Games-Lab-Setup-${version}.${ext}",
     "publish": [
       {

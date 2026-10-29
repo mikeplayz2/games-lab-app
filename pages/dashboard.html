@@ -115,6 +115,21 @@
     .card-note { margin: 8px 0 0; color: var(--muted); font-size: .9rem; }
     .news-list { display: grid; gap: 10px; }
     .news-item { padding: 13px 15px; border: 1px solid rgba(255, 255, 255, .055); border-radius: 14px; background: rgba(255, 255, 255, .035); color: #dce6f5; }
+    .quick-play-result { min-height: 48px; margin: 0 0 14px; color: var(--blue); font-size: 1.2rem; font-weight: 800; }
+    .quick-play-result span { display: block; margin-top: 4px; color: var(--muted); font-size: .82rem; font-weight: 500; }
+    .focus-clock { color: var(--blue); font-size: 2.2rem; font-weight: 850; font-variant-numeric: tabular-nums; letter-spacing: -.04em; }
+    .focus-actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 12px; }
+    .focus-actions button, .quick-play-button {
+      min-height: 40px;
+      padding: 0 13px;
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      background: rgba(255,255,255,.07);
+      color: white;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .focus-actions button[data-primary], .quick-play-button { border: 0; background: linear-gradient(135deg,#2563eb,#0ea5e9); }
 
     .featured { display: flex; align-items: center; gap: 25px; margin-bottom: 18px; padding: 26px; border-radius: 24px; }
     .featured img { width: 128px; height: 128px; flex: 0 0 128px; border-radius: 22px; object-fit: cover; }
@@ -234,6 +249,23 @@
         <p class="card-note">The countdown is based on the currently announced release date.</p>
       </section>
 
+      <section class="card glass" aria-labelledby="quick-play-heading">
+        <h3 id="quick-play-heading">🎲 Quick play</h3>
+        <p class="quick-play-result" id="quick-play-result" aria-live="polite">Need a game idea?<span>Shuffle the playable library for a surprise.</span></p>
+        <button class="quick-play-button" id="quick-play-button" type="button">Pick a random game</button>
+        <a class="featured-play" id="quick-play-link" href="./games.html" hidden>Play this game →</a>
+      </section>
+
+      <section class="card glass" aria-labelledby="focus-heading">
+        <h3 id="focus-heading">⏱️ Focus sprint</h3>
+        <div class="focus-clock" id="focus-clock" aria-label="15 minutes remaining">15:00</div>
+        <p class="card-note" id="focus-message" role="status" aria-live="polite">Take a 15-minute play break. Pause or reset any time.</p>
+        <div class="focus-actions">
+          <button id="focus-toggle" data-primary type="button">Start sprint</button>
+          <button id="focus-reset" type="button">Reset</button>
+        </div>
+      </section>
+
       <section class="card glass" id="updates" aria-labelledby="updates-heading">
         <h3 id="updates-heading">📰 Latest updates</h3>
         <div class="news-list">
@@ -258,7 +290,7 @@
     <section class="stats" aria-label="Games Lab at a glance">
       <div class="stat glass"><strong id="game-total">9</strong><span>Games</span></div>
       <div class="stat glass"><strong>40+</strong><span>Creators</span></div>
-      <div class="stat glass"><strong>1.0.8</strong><span>Version</span></div>
+      <div class="stat glass"><strong>1.0.9</strong><span>Version</span></div>
       <div class="stat glass"><strong>24/7</strong><span>Online</span></div>
     </section>
   </main>
@@ -421,6 +453,80 @@
     }
     updateCountdown();
     window.setInterval(updateCountdown, 1000);
+
+    const playableGames = games.filter((game) => game.status === "Playable" && game.folder);
+    const quickPlayButton = document.getElementById("quick-play-button");
+    const quickPlayResult = document.getElementById("quick-play-result");
+    const quickPlayLink = document.getElementById("quick-play-link");
+    let previousQuickPick = "";
+    quickPlayButton.addEventListener("click", () => {
+      const choices = playableGames.filter((game) => game.title !== previousQuickPick);
+      const pool = choices.length ? choices : playableGames;
+      const game = pool[Math.floor(Math.random() * pool.length)];
+      if (!game) {
+        quickPlayResult.textContent = "No playable games are available yet.";
+        quickPlayLink.hidden = true;
+        return;
+      }
+      previousQuickPick = game.title;
+      quickPlayResult.replaceChildren(
+        document.createTextNode(`${game.emoji || "🎮"} ${game.title}`),
+        Object.assign(document.createElement("span"), { textContent: `${game.category} · Picked for you` })
+      );
+      quickPlayLink.href = `${game.folder.replace(/\/+$/, "")}/index.html`;
+      quickPlayLink.hidden = false;
+      quickPlayButton.textContent = "Shuffle again";
+    });
+
+    const focusDuration = 15 * 60 * 1000;
+    const focusClock = document.getElementById("focus-clock");
+    const focusMessage = document.getElementById("focus-message");
+    const focusToggle = document.getElementById("focus-toggle");
+    const focusReset = document.getElementById("focus-reset");
+    let focusRemaining = focusDuration;
+    let focusDeadline = 0;
+    let focusInterval;
+
+    function renderFocusClock() {
+      if (focusDeadline) focusRemaining = Math.max(0, focusDeadline - Date.now());
+      const seconds = Math.ceil(focusRemaining / 1000);
+      const minutes = Math.floor(seconds / 60);
+      const remainder = seconds % 60;
+      focusClock.textContent = `${String(minutes).padStart(2, "0")}:${String(remainder).padStart(2, "0")}`;
+      focusClock.setAttribute("aria-label", `${minutes} minutes and ${remainder} seconds remaining`);
+      if (seconds === 0 && focusDeadline) {
+        clearInterval(focusInterval);
+        focusDeadline = 0;
+        focusToggle.textContent = "Start another sprint";
+        focusMessage.textContent = "Sprint complete. Nice work!";
+      }
+    }
+
+    focusToggle.addEventListener("click", () => {
+      if (focusDeadline) {
+        focusRemaining = Math.max(0, focusDeadline - Date.now());
+        focusDeadline = 0;
+        clearInterval(focusInterval);
+        focusToggle.textContent = "Resume sprint";
+        focusMessage.textContent = "Sprint paused. Pick it up whenever you're ready.";
+      } else {
+        if (focusRemaining <= 0) focusRemaining = focusDuration;
+        focusDeadline = Date.now() + focusRemaining;
+        focusToggle.textContent = "Pause sprint";
+        focusMessage.textContent = "One thing at a time. You’ve got this.";
+        focusInterval = window.setInterval(renderFocusClock, 250);
+      }
+      renderFocusClock();
+    });
+
+    focusReset.addEventListener("click", () => {
+      clearInterval(focusInterval);
+      focusDeadline = 0;
+      focusRemaining = focusDuration;
+      focusToggle.textContent = "Start sprint";
+      focusMessage.textContent = "Take a 15-minute play break. Pause or reset any time.";
+      renderFocusClock();
+    });
   </script>
 </body>
 </html>

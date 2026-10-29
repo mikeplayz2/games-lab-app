@@ -74,14 +74,18 @@
           <span class="setting-copy"><strong>Reduce motion</strong><span>Keep page animations and transitions to a minimum.</span></span>
           <span class="switch"><input id="motion-setting" type="checkbox" name="reduceMotion"><span class="switch-track"></span></span>
         </label>
+        <label class="setting-row glass" for="music-controls-setting">
+          <span class="setting-copy"><strong>Desktop music controls</strong><span>Show controls for music playing in Windows in the bottom corner.</span></span>
+          <span class="switch"><input id="music-controls-setting" type="checkbox" name="showMusicControls"><span class="switch-track"></span></span>
+        </label>
       </div>
       <p class="settings-message" id="settings-message" role="status" aria-live="polite"></p>
     </form>
 
-    <div class="settings-note glass"><strong>Good to know:</strong> Your account details are managed from your profile. These appearance preferences stay on this device and browser.</div>
+    <div class="settings-note glass"><strong>Good to know:</strong> Your account details are managed from your profile. These preferences stay on this device and browser. Music controls read Windows' current media-session details only; Games Lab does not record audio.</div>
     <section class="settings-note glass" aria-labelledby="desktop-update-title">
       <strong id="desktop-update-title">Games Lab app updates</strong>
-      <p>Check whether a newer desktop app is available. You’ll be asked before it downloads or installs.</p>
+      <p>Check for a newer numerical app version. If you’re up to date, the result stays here without a popup. You’ll be asked before an update downloads or installs.</p>
       <div class="desktop-update-tools">
         <button class="button secondary" id="manual-update-check" data-check-for-updates type="button" hidden>Check for updates</button>
         <p class="desktop-update-status" id="desktop-update-status" role="status" aria-live="polite"></p>

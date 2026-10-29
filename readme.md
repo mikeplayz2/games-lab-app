@@ -72,6 +72,12 @@ publishing requires Firestore to be enabled and `firestore.rules` to be
 published in the Firebase Console. A publish that times out can still finish
 server-side; the same form can be safely retried without creating a duplicate.
 
+The dashboard includes a random quick-play picker and a pauseable 15-minute
+focus sprint. On Windows, Games Lab can show controls for the active system
+music session in the bottom corner; enable or disable them in **Settings**.
+The controls read track metadata from Windows and send play/pause/skip commands;
+they do not record audio.
+
 The navigation is a glass-style side dock on desktop and a bottom bar on
 smaller screens. **Local games** scans common Steam, Epic, GOG, EA, Xbox,
 Ubisoft, Riot, and Games folders for Windows executables. Use **Add folder** to
@@ -88,7 +94,7 @@ npm run dist:win
 ```
 
 The output is in `release`, with a name like
-`Games-Lab-Setup-1.0.8.exe`. The branded installer uses a Games Lab welcome
+`Games-Lab-Setup-1.0.9.exe`. The branded installer uses a Games Lab welcome
 panel, header, and matching executable and shortcut icon. Run it to test the
 install wizard, Start menu entry, desktop shortcut, sign-in, and games on a
 Windows computer.
@@ -122,8 +128,10 @@ are in `assets/installer-header.bmp` and `assets/installer-sidebar.bmp`.
    `Games-Lab-Setup-<version>.exe`.
 
 The publisher uploads the installer and the update metadata. Installed copies
-check for releases at launch and every four hours while the app is open. If a
-new version is found, the app shows an in-app prompt and a Windows notification.
+check for releases at launch and every four hours while the app is open. Only a
+numerically newer release counts as an update; an up-to-date result is shown in
+Settings without an interruption. If a newer version is found, the app shows
+an in-app prompt and a Windows notification.
 The user chooses when to download it and can restart to install it.
 
 These are release checks, not a real-time push channel: a closed app cannot show

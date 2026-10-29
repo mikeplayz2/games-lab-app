@@ -1,4 +1,5 @@
 const { app, BrowserWindow, dialog, ipcMain, Notification, shell } = require("electron");
+const { execFile } = require("node:child_process");
 const { autoUpdater } = require("electron-updater");
 const fs = require("node:fs");
 const fsp = require("node:fs/promises");
@@ -25,6 +26,7 @@ const MIME_TYPES = {
   ".webp": "image/webp"
 };
 const VALID_GITHUB_VALUE = /^[A-Za-z0-9._-]+$/;
+const MEDIA_ACTIONS = new Set(["play-pause", "previous", "next"]);
 let mainWindow;
 let localServer;
 let updateState = { status: "idle", version: app.getVersion() };
@@ -180,6 +182,59 @@ function isValidReleaseConfig() {
   return VALID_GITHUB_VALUE.test(githubOwner)
     && githubOwner !== "YOUR_GITHUB_USERNAME"
     && VALID_GITHUB_VALUE.test(githubRepository);
+}
+
+function compareNumericVersions(left, right) {
+  const parse = (version) => {
+    if (typeof version !== "string") return null;
+    const match = version.trim().match(/^v?(\d+(?:\.\d+)*)(?:[-+][0-9A-Za-z.-]+)?$/);
+    return match ? match[1].split(".").map((part) => part.replace(/^0+(?=\d)/, "")) : null;
+  };
+  const leftParts = parse(left);
+  const rightParts = parse(right);
+  if (!leftParts || !rightParts) return null;
+
+  for (let index = 0; index < Math.max(leftParts.length, rightParts.length); index += 1) {
+    const leftPart = leftParts[index] || "0";
+    const rightPart = rightParts[index] || "0";
+    if (leftPart.length !== rightPart.length) return leftPart.length > rightPart.length ? 1 : -1;
+    if (leftPart !== rightPart) return leftPart > rightPart ? 1 : -1;
+  }
+  return 0;
+}
+
+function getMediaScriptPath() {
+  if (app.isPackaged) {
+    return path.join(path.dirname(APP_ROOT), "app.asar.unpacked", "windows-media-controls.ps1");
+  }
+  return path.join(APP_ROOT, "windows-media-controls.ps1");
+}
+
+function runWindowsMediaCommand(action) {
+  return new Promise((resolve, reject) => {
+    execFile("powershell.exe", [
+      "-NoLogo",
+      "-NoProfile",
+      "-NonInteractive",
+      "-ExecutionPolicy",
+      "Bypass",
+      "-File",
+      getMediaScriptPath(),
+      "-Action",
+      action
+    ], { windowsHide: true, timeout: 10000, maxBuffer: 128 * 1024 }, (error, stdout, stderr) => {
+      if (error) {
+        const detail = stderr.trim();
+        reject(new Error(detail || `Windows media controls failed: ${error.message}`));
+        return;
+      }
+      try {
+        resolve(JSON.parse(stdout.trim()));
+      } catch (parseError) {
+        reject(new Error(`Windows media controls returned invalid data: ${parseError.message}`));
+      }
+    });
+  });
 }
 
 function publishUpdateState(status, details = {}) {
@@ -377,6 +432,10 @@ function configureUpdater() {
   autoUpdater.on("checking-for-update", () => publishUpdateState("checking"));
   autoUpdater.on("update-not-available", () => publishUpdateState("current"));
   autoUpdater.on("update-available", (info) => {
+    if (compareNumericVersions(info.version, app.getVersion()) !== 1) {
+      publishUpdateState("current");
+      return;
+    }
     publishUpdateState("available", { availableVersion: info.version });
     notifyUser("Games Lab update available", `Version ${info.version} is ready to download.`);
   });
@@ -432,6 +491,19 @@ ipcMain.handle("games-lab:install-update", () => {
   autoUpdater.quitAndInstall();
 });
 ipcMain.handle("games-lab:app-version", () => app.getVersion());
+ipcMain.handle("games-lab:get-music-state", async (event) => {
+  if (!isTrustedAppFrame(event)) throw new Error("Music controls are available only in the Games Lab app.");
+  if (process.platform !== "win32") {
+    return { available: false, reason: "unsupported-platform" };
+  }
+  return runWindowsMediaCommand("get");
+});
+ipcMain.handle("games-lab:control-music", async (event, action) => {
+  if (!isTrustedAppFrame(event)) throw new Error("Music controls are available only in the Games Lab app.");
+  if (process.platform !== "win32") throw new Error("System music controls are available on Windows.");
+  if (!MEDIA_ACTIONS.has(action)) throw new Error("Choose a supported music control.");
+  return runWindowsMediaCommand(action);
+});
 ipcMain.handle("games-lab:scan-local-games", async (event) => {
   if (!isTrustedAppFrame(event)) throw new Error("Local game scans are available only in the Games Lab app.");
   return scanForLocalGames();

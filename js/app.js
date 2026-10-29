@@ -3,7 +3,7 @@ import { auth } from "./firebase.js";
 import { getAvatar } from "./profile.js";
 
 const SETTINGS_PREFIX = "games-lab-settings:";
-const DEFAULT_SETTINGS = { accent: "blue", compact: false, reduceMotion: false };
+const DEFAULT_SETTINGS = { accent: "blue", compact: false, reduceMotion: false, showMusicControls: true };
 const ACCENTS = {
   blue: { color: "#3b82f6", glow: "rgba(59, 130, 246, .28)" },
   violet: { color: "#8b5cf6", glow: "rgba(139, 92, 246, .28)" },
@@ -30,6 +30,9 @@ function applySettings(settings) {
   document.documentElement.style.setProperty("--primary-light", accent.color);
   document.body.classList.toggle("compact-mode", Boolean(settings.compact));
   document.body.classList.toggle("reduce-motion", Boolean(settings.reduceMotion));
+  window.dispatchEvent(new CustomEvent("games-lab:music-setting-change", {
+    detail: Boolean(settings.showMusicControls)
+  }));
 }
 
 onAuthStateChanged(auth, (user) => {
@@ -55,11 +58,13 @@ onAuthStateChanged(auth, (user) => {
     settingsForm.elements.accent.value = settings.accent;
     settingsForm.elements.compact.checked = Boolean(settings.compact);
     settingsForm.elements.reduceMotion.checked = Boolean(settings.reduceMotion);
+    settingsForm.elements.showMusicControls.checked = Boolean(settings.showMusicControls);
     settingsForm.addEventListener("change", () => {
       const next = {
         accent: settingsForm.elements.accent.value,
         compact: settingsForm.elements.compact.checked,
-        reduceMotion: settingsForm.elements.reduceMotion.checked
+        reduceMotion: settingsForm.elements.reduceMotion.checked,
+        showMusicControls: settingsForm.elements.showMusicControls.checked
       };
       try {
         localStorage.setItem(`${SETTINGS_PREFIX}${user.uid}`, JSON.stringify(next));
