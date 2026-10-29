@@ -62,9 +62,10 @@ Start the app in development mode:
 npm start
 ```
 
-Sign in, open Games, and try all nine playable games, including Klondike
-Solitaire and one-, two-, or four-suit Spider Solitaire. Then try the profile
-and settings pages. Development mode does not check for app updates.
+Sign in, open Games, and try all twelve playable games, including Klondike
+Solitaire, one-, two-, or four-suit Spider Solitaire, Neon Slope Run, Snowy
+Summit Ride, and Cookie Comet. Then try the profile and settings pages.
+Development mode does not check for app updates.
 
 Open **Tutorial** from the bottom navigation for a quick guide to the game
 library, community submissions, profile settings, and app updates. Community
@@ -94,7 +95,7 @@ npm run dist:win
 ```
 
 The output is in `release`, with a name like
-`Games-Lab-Setup-1.0.9.exe`. The branded installer uses a Games Lab welcome
+`Games-Lab-Setup-1.1.0.exe`. The branded installer uses a Games Lab welcome
 panel, header, and matching executable and shortcut icon. Run it to test the
 install wizard, Start menu entry, desktop shortcut, sign-in, and games on a
 Windows computer.

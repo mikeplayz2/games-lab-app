@@ -90,5 +90,35 @@ export const games = [
     accent: "#ad91ec",
     folder: "../games/spider-solitaire",
     icon: ""
+  },
+  {
+    title: "Neon Slope Run",
+    category: "Arcade",
+    description: "Race down a glowing endless track, dodge barriers, and collect energy orbs.",
+    status: "Playable",
+    emoji: "🟢",
+    accent: "#50edcf",
+    folder: "../games/neon-slope-run",
+    icon: ""
+  },
+  {
+    title: "Snowy Summit Ride",
+    category: "Arcade",
+    description: "Sled down a snowy mountain, steer around trees, leap rocks, and gather snowflakes.",
+    status: "Playable",
+    emoji: "🛷",
+    accent: "#92e8ff",
+    folder: "../games/snowy-summit",
+    icon: ""
+  },
+  {
+    title: "Cookie Comet",
+    category: "Casual",
+    description: "Bake cookies, upgrade your click, and grow a little cosmic bakery.",
+    status: "Playable",
+    emoji: "🍪",
+    accent: "#ffd285",
+    folder: "../games/cookie-comet",
+    icon: ""
   }
 ];

@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#070a18">
+  <title>Neon Slope Run | Games Lab</title>
+  <link rel="stylesheet" href="../../css/mini-games.css">
+  <style>
+    :root { --game-accent: #50edcf; }
+    .run-panel { background: linear-gradient(150deg, rgba(14,22,44,.94), rgba(11,14,30,.95)); }
+    .run-canvas { max-width: 460px; background: #070a18; box-shadow: 0 0 44px rgba(48,231,207,.12); }
+    .run-controls button { min-width: 58px; touch-action: none; }
+    .run-controls .primary { min-width: 138px; }
+    @media (max-width: 440px) { .run-controls button { min-width: 54px; } }
+  </style>
+</head>
+<body>
+  <main class="game-page">
+    <header class="game-topbar">
+      <a class="game-back" href="../../pages/games.html">← Back to games</a>
+      <span class="game-brand"><img src="../../assets/logo.png" alt=""> Games Lab</span>
+    </header>
+    <section class="game-intro">
+      <span class="game-icon" aria-hidden="true">🟢</span>
+      <p class="game-eyebrow">ARCADE · ENDLESS RUNNER</p>
+      <h1>Neon Slope Run</h1>
+      <p>Ride the glowing track, dodge the gates, and scoop up energy orbs.</p>
+    </section>
+    <section class="game-panel run-panel" aria-label="Neon Slope Run game">
+      <div class="game-stats" aria-live="polite">
+        <div class="game-stat"><strong id="distance">0 m</strong><span>DISTANCE</span></div>
+        <div class="game-stat"><strong id="orbs">0</strong><span>ENERGY ORBS</span></div>
+        <div class="game-stat"><strong id="best">0 m</strong><span>BEST RUN</span></div>
+      </div>
+      <canvas class="game-canvas run-canvas" id="game" width="460" height="560" role="img" aria-label="Neon runner. Use arrow keys or A and D to steer."></canvas>
+      <div class="game-controls run-controls">
+        <button id="left" type="button" aria-label="Move left">←</button>
+        <button class="primary" id="start" type="button">Start run</button>
+        <button id="right" type="button" aria-label="Move right">→</button>
+      </div>
+      <p class="game-instructions" id="message" role="status">← → / A D to steer · Swipe or use the buttons on touch screens.</p>
+    </section>
+    <p class="game-footer">Neon Slope Run · Your personal best is saved on this device.</p>
+  </main>
+  <script>
+    (() => {
+      "use strict";
+      const canvas = document.getElementById("game");
+      const ctx = canvas.getContext("2d");
+      const distanceDisplay = document.getElementById("distance");
+      const orbsDisplay = document.getElementById("orbs");
+      const bestDisplay = document.getElementById("best");
+      const startButton = document.getElementById("start");
+      const message = document.getElementById("message");
+      const bestKey = "games-lab-neon-slope-run-best";
+      const keys = { left: false, right: false };
+      const track = { horizon: 115, playerY: 495 };
+      let obstacles = [];
+      let orbs = [];
+      let distance = 0;
+      let orbCount = 0;
+      let best = 0;
+      let playerX = 0;
+      let speed = .28;
+      let spawnDistance = .7;
+      let running = false;
+      let ended = false;
+      let frameId = 0;
+      let lastFrame = 0;
+      let pointerX = null;
+      let lastSavedAt = 0;
+
+      function safeBest() {
+        try {
+          const value = Number(localStorage.getItem(bestKey));
+          return Number.isFinite(value) && value >= 0 ? Math.floor(value) : 0;
+        } catch (error) {
+          console.warn("Could not read the Neon Slope Run best score.", error);
+          return 0;
+        }
+      }
+
+      function saveBest() {
+        try {
+          localStorage.setItem(bestKey, String(best));
+        } catch (error) {
+          console.warn("Could not save the Neon Slope Run best score.", error);
+        }
+      }
+
+      function project(offset, z) {
+        const depth = 1 - Math.max(0, Math.min(1, z));
+        const y = track.horizon + depth * depth * (canvas.height - track.horizon);
+        const halfWidth = 19 + depth * 190;
+        return { x: canvas.width / 2 + offset * halfWidth, y, halfWidth, depth };
+      }
+
+      function drawBackground(now) {
+        const sky = ctx.createLinearGradient(0, 0, 0, track.horizon + 50);
+        sky.addColorStop(0, "#090d20");
+        sky.addColorStop(1, "#261955");
+        ctx.fillStyle = sky;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "rgba(110, 233, 255, .8)";
+        for (let index = 0; index < 38; index += 1) {
+          const x = (index * 97 + 31) % canvas.width;
+          const y = (index * 47 + 13) % (track.horizon - 15);
+          ctx.globalAlpha = .2 + ((index * 13) % 70) / 100;
+          ctx.fillRect(x, y, index % 8 === 0 ? 2 : 1, index % 8 === 0 ? 2 : 1);
+        }
+        ctx.globalAlpha = 1;
+        const glow = ctx.createRadialGradient(canvas.width / 2, track.horizon, 2, canvas.width / 2, track.horizon, 90);
+        glow.addColorStop(0, "rgba(69, 246, 220, .24)");
+        glow.addColorStop(1, "rgba(69, 246, 220, 0)");
+        ctx.fillStyle = glow;
+        ctx.fillRect(canvas.width / 2 - 100, track.horizon - 85, 200, 190);
+
+        const road = ctx.createLinearGradient(0, track.horizon, 0, canvas.height);
+        road.addColorStop(0, "#131633");
+        road.addColorStop(1, "#0b1021");
+        ctx.fillStyle = road;
+        ctx.beginPath();
+        ctx.moveTo(canvas.width / 2 - 19, track.horizon);
+        ctx.lineTo(canvas.width / 2 + 19, track.horizon);
+        ctx.lineTo(canvas.width / 2 + 211, canvas.height);
+        ctx.lineTo(canvas.width / 2 - 211, canvas.height);
+        ctx.closePath();
+        ctx.fill();
+
+        for (const side of [-1, 1]) {
+          ctx.strokeStyle = side < 0 ? "rgba(51, 229, 210, .9)" : "rgba(163, 91, 255, .85)";
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(canvas.width / 2 + side * 19, track.horizon);
+          ctx.lineTo(canvas.width / 2 + side * 211, canvas.height);
+          ctx.stroke();
+        }
+        for (let index = 0; index < 11; index += 1) {
+          const z = ((index / 11) + (now * speed * .12) % 1) % 1;
+          const point = project(0, z);
+          ctx.strokeStyle = `rgba(87, 181, 255, ${.06 + point.depth * .19})`;
+          ctx.lineWidth = 1 + point.depth;
+          ctx.beginPath();
+          ctx.moveTo(canvas.width / 2 - point.halfWidth, point.y);
+          ctx.lineTo(canvas.width / 2 + point.halfWidth, point.y);
+          ctx.stroke();
+        }
+      }
+
+      function drawOrb(item) {
+        const point = project(item.x, item.z);
+        const radius = 4 + point.depth * 11;
+        ctx.save();
+        ctx.shadowColor = "#6effc7";
+        ctx.shadowBlur = 9 + point.depth * 14;
+        ctx.fillStyle = "#b0ffcf";
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "rgba(255,255,255,.85)";
+        ctx.lineWidth = Math.max(1, point.depth * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function drawObstacle(item) {
+        const point = project(item.x, item.z);
+        const width = 17 + point.depth * 52;
+        const height = 13 + point.depth * 40;
+        const x = point.x - width / 2;
+        const y = point.y - height / 2;
+        ctx.save();
+        ctx.shadowColor = item.kind === "gate" ? "#ff4f9a" : "#ffbd4b";
+        ctx.shadowBlur = 6 + point.depth * 10;
+        ctx.fillStyle = item.kind === "gate" ? "#f24e91" : "#f4a940";
+        ctx.fillRect(x, y, width, height);
+        ctx.fillStyle = item.kind === "gate" ? "#80265e" : "#82512f";
+        ctx.fillRect(x + width * .19, y + height * .2, width * .62, height * .27);
+        ctx.fillStyle = "rgba(255,255,255,.35)";
+        ctx.fillRect(x + width * .12, y + height * .12, Math.max(2, width * .12), height * .72);
+        ctx.restore();
+      }
+
+      function drawPlayer(now) {
+        const point = project(playerX, .04);
+        const radius = 17;
+        ctx.save();
+        ctx.translate(point.x, track.playerY);
+        ctx.shadowColor = "#4df2da";
+        ctx.shadowBlur = 23;
+        ctx.fillStyle = "#42eddb";
+        ctx.beginPath();
+        ctx.arc(0, 0, radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = "#bdfff4";
+        ctx.beginPath();
+        ctx.arc(-5, -6, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "#10284a";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(0, 2, 10, .15, Math.PI - .15);
+        ctx.stroke();
+        ctx.globalAlpha = .2;
+        ctx.fillStyle = "#7a62ff";
+        ctx.beginPath();
+        ctx.ellipse(0, 22, radius + 3, 5 + Math.sin(now / 70) * 1.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      function drawOverlay(title, subtitle) {
+        ctx.fillStyle = "rgba(5, 8, 24, .69)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#f4fbff";
+        ctx.font = "800 34px Segoe UI, sans-serif";
+        ctx.fillText(title, canvas.width / 2, 260);
+        ctx.fillStyle = "#b4c8dd";
+        ctx.font = "16px Segoe UI, sans-serif";
+        ctx.fillText(subtitle, canvas.width / 2, 294);
+        ctx.textAlign = "left";
+      }
+
+      function render(now = 0) {
+        drawBackground(now);
+        for (const obstacle of obstacles) drawObstacle(obstacle);
+        for (const orb of orbs) drawOrb(orb);
+        drawPlayer(now);
+        if (!running) {
+          drawOverlay(ended ? "RUN OVER" : "READY WHEN YOU ARE", ended ? "Tap Start run to take another shot" : "A neon downhill challenge");
+        }
+      }
+
+      function spawnRow() {
+        const lane = () => (Math.random() * 1.2) - .6;
+        if (Math.random() < .76) {
+          const obstacleCount = Math.random() < .28 ? 2 : 1;
+          const used = [];
+          for (let index = 0; index < obstacleCount; index += 1) {
+            let x = lane();
+            if (used.some((value) => Math.abs(value - x) < .6)) x = x > 0 ? -.66 : .66;
+            used.push(x);
+            obstacles.push({ x, z: 1, kind: Math.random() < .35 ? "gate" : "block" });
+          }
+        }
+        if (Math.random() < .63) {
+          orbs.push({ x: lane(), z: 1, phase: Math.random() * Math.PI * 2 });
+        }
+      }
+
+      function update(delta) {
+        speed = Math.min(1.05, speed + delta * .017);
+        distance += speed * delta * 80;
+        spawnDistance -= speed * delta;
+        while (spawnDistance <= 0) {
+          spawnRow();
+          spawnDistance += .58 + Math.random() * .24;
+        }
+
+        const steer = (Number(keys.right) - Number(keys.left)) * delta * 1.65;
+        if (pointerX !== null) {
+          const target = Math.max(-.88, Math.min(.88, (pointerX / canvas.clientWidth - .5) * 2));
+          playerX += (target - playerX) * Math.min(1, delta * 4);
+        } else {
+          playerX += steer;
+        }
+        playerX = Math.max(-.89, Math.min(.89, playerX));
+
+        for (const item of [...obstacles, ...orbs]) item.z -= speed * delta;
+        const hit = obstacles.findIndex((item) => item.z <= .075 && item.z >= -.035 && Math.abs(item.x - playerX) < .19);
+        if (hit !== -1) {
+          finishRun();
+          return;
+        }
+        obstacles = obstacles.filter((item) => item.z > -.12);
+        orbs = orbs.filter((item) => {
+          if (item.z <= .075 && item.z >= -.035 && Math.abs(item.x - playerX) < .18) {
+            orbCount += 1;
+            return false;
+          }
+          return item.z > -.12;
+        });
+
+        const roundedDistance = Math.floor(distance);
+        if (roundedDistance > best) {
+          best = roundedDistance;
+          if (Date.now() - lastSavedAt > 1000) {
+            saveBest();
+            lastSavedAt = Date.now();
+          }
+        }
+        distanceDisplay.textContent = `${roundedDistance} m`;
+        orbsDisplay.textContent = String(orbCount);
+        bestDisplay.textContent = `${best} m`;
+      }
+
+      function finishRun() {
+        running = false;
+        ended = true;
+        cancelAnimationFrame(frameId);
+        startButton.textContent = "Run again";
+        message.textContent = `You covered ${Math.floor(distance)} m and found ${orbCount} energy ${orbCount === 1 ? "orb" : "orbs"}.`;
+        if (Math.floor(distance) > best) best = Math.floor(distance);
+        saveBest();
+        bestDisplay.textContent = `${best} m`;
+        render(performance.now());
+      }
+
+      function loop(now) {
+        if (!running) return;
+        const delta = Math.min(.05, (now - lastFrame) / 1000);
+        lastFrame = now;
+        update(delta);
+        render(now);
+        if (running) frameId = requestAnimationFrame(loop);
+      }
+
+      function startRun() {
+        cancelAnimationFrame(frameId);
+        obstacles = [];
+        orbs = [];
+        distance = 0;
+        orbCount = 0;
+        playerX = 0;
+        speed = .28;
+        spawnDistance = .36;
+        running = true;
+        ended = false;
+        lastFrame = performance.now();
+        startButton.textContent = "Running…";
+        message.textContent = "Watch the track ahead and steer around glowing gates.";
+        distanceDisplay.textContent = "0 m";
+        orbsDisplay.textContent = "0";
+        frameId = requestAnimationFrame(loop);
+      }
+
+      function setKey(event, pressed) {
+        const key = event.key.toLowerCase();
+        if (key === "arrowleft" || key === "a") {
+          keys.left = pressed;
+          event.preventDefault();
+        } else if (key === "arrowright" || key === "d") {
+          keys.right = pressed;
+          event.preventDefault();
+        }
+      }
+
+      function bindHold(id, direction) {
+        const button = document.getElementById(id);
+        button.addEventListener("pointerdown", (event) => {
+          event.preventDefault();
+          keys[direction] = true;
+          button.setPointerCapture(event.pointerId);
+        });
+        for (const eventName of ["pointerup", "pointercancel", "lostpointercapture"]) {
+          button.addEventListener(eventName, () => { keys[direction] = false; });
+        }
+      }
+
+      canvas.addEventListener("pointerdown", (event) => {
+        if (event.pointerType === "touch") {
+          canvas.setPointerCapture(event.pointerId);
+          pointerX = event.offsetX;
+        }
+      });
+      canvas.addEventListener("pointermove", (event) => {
+        if (event.pointerType === "touch" && canvas.hasPointerCapture(event.pointerId)) pointerX = event.offsetX;
+      });
+      for (const eventName of ["pointerup", "pointercancel", "lostpointercapture"]) {
+        canvas.addEventListener(eventName, () => { pointerX = null; });
+      }
+      document.addEventListener("keydown", (event) => setKey(event, true));
+      document.addEventListener("keyup", (event) => setKey(event, false));
+      window.addEventListener("blur", () => { keys.left = false; keys.right = false; pointerX = null; });
+      window.addEventListener("pagehide", () => cancelAnimationFrame(frameId), { once: true });
+      bindHold("left", "left");
+      bindHold("right", "right");
+      startButton.addEventListener("click", startRun);
+      best = safeBest();
+      bestDisplay.textContent = `${best} m`;
+      render();
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#12233e">
+  <title>Snowy Summit Ride | Games Lab</title>
+  <link rel="stylesheet" href="../../css/mini-games.css">
+  <style>
+    :root { --game-accent: #92e8ff; }
+    .snow-panel { background: linear-gradient(155deg, rgba(20,37,62,.94), rgba(11,23,42,.96)); }
+    .snow-canvas { max-width: 460px; background: #d3efff; box-shadow: 0 0 48px rgba(104,207,255,.11); }
+    .snow-controls button { min-width: 58px; touch-action: none; }
+    .snow-controls .primary { min-width: 138px; }
+  </style>
+</head>
+<body>
+  <main class="game-page">
+    <header class="game-topbar">
+      <a class="game-back" href="../../pages/games.html">← Back to games</a>
+      <span class="game-brand"><img src="../../assets/logo.png" alt=""> Games Lab</span>
+    </header>
+    <section class="game-intro">
+      <span class="game-icon" aria-hidden="true">🛷</span>
+      <p class="game-eyebrow">ARCADE · WINTER DESCENT</p>
+      <h1>Snowy Summit Ride</h1>
+      <p>Find your line down the mountain, leap the rocks, and gather snowflakes.</p>
+    </section>
+    <section class="game-panel snow-panel" aria-label="Snowy Summit Ride game">
+      <div class="game-stats" aria-live="polite">
+        <div class="game-stat"><strong id="distance">0 m</strong><span>DESCENT</span></div>
+        <div class="game-stat"><strong id="flakes">0</strong><span>SNOWFLAKES</span></div>
+        <div class="game-stat"><strong id="best">0 m</strong><span>BEST RIDE</span></div>
+      </div>
+      <canvas class="game-canvas snow-canvas" id="game" width="460" height="560" role="img" aria-label="Snowy mountain ride. Use the arrow keys to steer and space to jump."></canvas>
+      <div class="game-controls snow-controls">
+        <button id="left" type="button" aria-label="Turn left">←</button>
+        <button class="primary" id="start" type="button">Start ride</button>
+        <button id="right" type="button" aria-label="Turn right">→</button>
+        <button id="jump" type="button" aria-label="Jump">⤴ Jump</button>
+      </div>
+      <p class="game-instructions" id="message" role="status">← → / A D to steer · Space or Jump to clear rocks · Collect ❄.</p>
+    </section>
+    <p class="game-footer">Snowy Summit Ride · Your personal best is saved on this device.</p>
+  </main>
+  <script>
+    (() => {
+      "use strict";
+      const canvas = document.getElementById("game");
+      const ctx = canvas.getContext("2d");
+      const distanceDisplay = document.getElementById("distance");
+      const flakesDisplay = document.getElementById("flakes");
+      const bestDisplay = document.getElementById("best");
+      const startButton = document.getElementById("start");
+      const message = document.getElementById("message");
+      const bestKey = "games-lab-snowy-summit-ride-best";
+      const keys = { left: false, right: false };
+      const horizon = 105;
+      const playerY = 462;
+      const snow = Array.from({ length: 72 }, () => ({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        radius: .7 + Math.random() * 2.2,
+        drift: (Math.random() - .5) * 25,
+        speed: 26 + Math.random() * 58,
+        alpha: .25 + Math.random() * .5
+      }));
+      let obstacles = [];
+      let flakes = [];
+      let distance = 0;
+      let flakeCount = 0;
+      let best = 0;
+      let playerX = 0;
+      let speed = .3;
+      let spawnDistance = .45;
+      let jumpUntil = 0;
+      let running = false;
+      let ended = false;
+      let lastFrame = 0;
+      let frameId = 0;
+      let touchX = null;
+      let lastSavedAt = 0;
+
+      function project(offset, z) {
+        const depth = 1 - Math.max(0, Math.min(1, z));
+        const y = horizon + depth * depth * (canvas.height - horizon);
+        const halfWidth = 28 + depth * 190;
+        return { x: canvas.width / 2 + offset * halfWidth, y, halfWidth, depth };
+      }
+
+      function readBest() {
+        try {
+          const value = Number(localStorage.getItem(bestKey));
+          return Number.isFinite(value) && value >= 0 ? Math.floor(value) : 0;
+        } catch (error) {
+          console.warn("Could not read the Snowy Summit Ride best score.", error);
+          return 0;
+        }
+      }
+
+      function saveBest() {
+        try {
+          localStorage.setItem(bestKey, String(best));
+        } catch (error) {
+          console.warn("Could not save the Snowy Summit Ride best score.", error);
+        }
+      }
+
+      function drawBackground(now, delta) {
+        const sky = ctx.createLinearGradient(0, 0, 0, horizon + 65);
+        sky.addColorStop(0, "#8cc9ee");
+        sky.addColorStop(1, "#e5f7ff");
+        ctx.fillStyle = sky;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = "#edf9ff";
+        ctx.beginPath();
+        ctx.moveTo(0, 126);
+        ctx.lineTo(75, 58);
+        ctx.lineTo(142, 128);
+        ctx.lineTo(222, 42);
+        ctx.lineTo(327, 133);
+        ctx.lineTo(397, 61);
+        ctx.lineTo(460, 122);
+        ctx.lineTo(460, 212);
+        ctx.lineTo(0, 212);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = "rgba(102,148,182,.18)";
+        ctx.beginPath();
+        ctx.moveTo(174, 94);
+        ctx.lineTo(222, 42);
+        ctx.lineTo(282, 99);
+        ctx.lineTo(240, 83);
+        ctx.lineTo(220, 101);
+        ctx.lineTo(204, 79);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = "#bfe5f7";
+        ctx.beginPath();
+        ctx.moveTo(canvas.width / 2 - 25, horizon);
+        ctx.lineTo(canvas.width / 2 + 25, horizon);
+        ctx.lineTo(canvas.width / 2 + 218, canvas.height);
+        ctx.lineTo(canvas.width / 2 - 218, canvas.height);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = "rgba(255,255,255,.76)";
+        ctx.lineWidth = 4;
+        for (const side of [-1, 1]) {
+          ctx.beginPath();
+          ctx.moveTo(canvas.width / 2 + side * 24, horizon);
+          ctx.lineTo(canvas.width / 2 + side * 217, canvas.height);
+          ctx.stroke();
+        }
+
+        for (let index = 0; index < 12; index += 1) {
+          const z = ((index / 12) + (now * speed * .065) % 1) % 1;
+          const point = project(0, z);
+          ctx.strokeStyle = `rgba(95,154,192,${.04 + point.depth * .13})`;
+          ctx.lineWidth = 1 + point.depth;
+          ctx.beginPath();
+          ctx.moveTo(canvas.width / 2 - point.halfWidth, point.y);
+          ctx.lineTo(canvas.width / 2 + point.halfWidth, point.y);
+          ctx.stroke();
+        }
+
+        for (const flake of snow) {
+          flake.y += flake.speed * delta;
+          flake.x += flake.drift * delta;
+          if (flake.y > canvas.height + 5) {
+            flake.y = -4;
+            flake.x = Math.random() * canvas.width;
+          }
+          if (flake.x < -5) flake.x = canvas.width + 3;
+          if (flake.x > canvas.width + 5) flake.x = -3;
+          ctx.globalAlpha = flake.alpha;
+          ctx.fillStyle = "#fff";
+          ctx.beginPath();
+          ctx.arc(flake.x, flake.y, flake.radius, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      }
+
+      function drawTree(item) {
+        const point = project(item.x, item.z);
+        const size = 14 + point.depth * 52;
+        const baseY = point.y;
+        const shadowWidth = size * .72;
+        ctx.fillStyle = "rgba(33,76,108,.2)";
+        ctx.beginPath();
+        ctx.ellipse(point.x, baseY + 2, shadowWidth * .72, size * .12, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#fff";
+        ctx.beginPath();
+        ctx.moveTo(point.x, baseY - size);
+        ctx.lineTo(point.x - size * .45, baseY - size * .26);
+        ctx.lineTo(point.x - size * .19, baseY - size * .28);
+        ctx.lineTo(point.x - size * .68, baseY + size * .1);
+        ctx.lineTo(point.x + size * .68, baseY + size * .1);
+        ctx.lineTo(point.x + size * .19, baseY - size * .28);
+        ctx.lineTo(point.x + size * .45, baseY - size * .26);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = "#286c72";
+        ctx.beginPath();
+        ctx.moveTo(point.x, baseY - size * .88);
+        ctx.lineTo(point.x - size * .25, baseY - size * .35);
+        ctx.lineTo(point.x + size * .28, baseY - size * .35);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = "#a96949";
+        ctx.fillRect(point.x - size * .08, baseY - size * .08, size * .16, size * .22);
+      }
+
+      function drawRock(item) {
+        const point = project(item.x, item.z);
+        const size = 7 + point.depth * 29;
+        ctx.fillStyle = "#7895a9";
+        ctx.beginPath();
+        ctx.moveTo(point.x - size * .8, point.y);
+        ctx.lineTo(point.x - size * .58, point.y - size * .57);
+        ctx.lineTo(point.x - size * .02, point.y - size);
+        ctx.lineTo(point.x + size * .47, point.y - size * .51);
+        ctx.lineTo(point.x + size * .8, point.y);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = "#edfaff";
+        ctx.beginPath();
+        ctx.moveTo(point.x - size * .6, point.y - size * .53);
+        ctx.lineTo(point.x - size * .02, point.y - size);
+        ctx.lineTo(point.x + size * .31, point.y - size * .58);
+        ctx.lineTo(point.x + size * .03, point.y - size * .66);
+        ctx.lineTo(point.x - size * .18, point.y - size * .48);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      function drawFlake(item) {
+        const point = project(item.x, item.z);
+        ctx.save();
+        ctx.translate(point.x, point.y);
+        ctx.rotate(item.phase);
+        ctx.shadowColor = "#fff";
+        ctx.shadowBlur = 7 + point.depth * 9;
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = 2 + point.depth * 2;
+        const size = 4 + point.depth * 9;
+        for (let branch = 0; branch < 3; branch += 1) {
+          ctx.rotate(Math.PI / 3);
+          ctx.beginPath();
+          ctx.moveTo(-size, 0);
+          ctx.lineTo(size, 0);
+          ctx.moveTo(size * .48, 0);
+          ctx.lineTo(size * .27, -size * .2);
+          ctx.moveTo(size * .48, 0);
+          ctx.lineTo(size * .27, size * .2);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      function drawRider(now) {
+        const air = Math.max(0, (jumpUntil - now) / 650);
+        const y = playerY - air * 70;
+        const point = project(playerX, .04);
+        const lean = (Number(keys.right) - Number(keys.left)) * .2;
+        ctx.save();
+        ctx.translate(point.x, y);
+        ctx.rotate(lean);
+        if (air > 0) {
+          ctx.globalAlpha = .17;
+          ctx.fillStyle = "#294e70";
+          ctx.beginPath();
+          ctx.ellipse(0, 37 + air * 70, 28, 8, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+        ctx.shadowColor = "#3e83aa";
+        ctx.shadowBlur = 12;
+        ctx.strokeStyle = "#ac574f";
+        ctx.lineWidth = 7;
+        ctx.lineCap = "round";
+        for (const offset of [-13, 13]) {
+          ctx.beginPath();
+          ctx.moveTo(offset - 13, 18);
+          ctx.lineTo(offset + 14, 21);
+          ctx.stroke();
+        }
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = "#dfebf1";
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.moveTo(-8, 12);
+        ctx.lineTo(-15, 30);
+        ctx.moveTo(8, 12);
+        ctx.lineTo(15, 30);
+        ctx.stroke();
+        ctx.fillStyle = "#df755b";
+        ctx.beginPath();
+        ctx.ellipse(0, 3, 10, 15, lean, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#26394c";
+        ctx.fillRect(-10, -5, 20, 7);
+        ctx.fillStyle = "#f3d9b3";
+        ctx.beginPath();
+        ctx.arc(0, -13, 8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#f3f8fc";
+        ctx.beginPath();
+        ctx.arc(0, -17, 8, Math.PI, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      function drawOverlay(title, subtitle) {
+        ctx.fillStyle = "rgba(10,30,51,.55)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#fff";
+        ctx.shadowColor = "#266085";
+        ctx.shadowBlur = 10;
+        ctx.font = "800 33px Segoe UI, sans-serif";
+        ctx.fillText(title, canvas.width / 2, 260);
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = "#e2f5ff";
+        ctx.font = "16px Segoe UI, sans-serif";
+        ctx.fillText(subtitle, canvas.width / 2, 294);
+        ctx.textAlign = "left";
+      }
+
+      function render(now = 0, delta = 0) {
+        drawBackground(now, delta);
+        for (const obstacle of obstacles) {
+          if (obstacle.kind === "tree") drawTree(obstacle);
+          else drawRock(obstacle);
+        }
+        for (const flake of flakes) drawFlake(flake);
+        drawRider(now);
+        if (!running) {
+          drawOverlay(ended ? "WIPEOUT!" : "READY TO RIDE?", ended ? "The mountain is calling. Try another run." : "A fresh trail, every time.");
+        }
+      }
+
+      function spawnRow() {
+        if (Math.random() < .83) {
+          const count = Math.random() < .25 ? 2 : 1;
+          const used = [];
+          for (let index = 0; index < count; index += 1) {
+            let x = Math.random() * 1.36 - .68;
+            if (used.some((other) => Math.abs(other - x) < .57)) x = x > 0 ? -.67 : .67;
+            used.push(x);
+            obstacles.push({ x, z: 1, kind: Math.random() < .58 ? "tree" : "rock" });
+          }
+        }
+        if (Math.random() < .64) {
+          flakes.push({ x: Math.random() * 1.25 - .625, z: 1, phase: Math.random() * Math.PI });
+        }
+      }
+
+      function update(delta, now) {
+        speed = Math.min(1.02, speed + delta * .014);
+        distance += speed * delta * 76;
+        spawnDistance -= speed * delta;
+        while (spawnDistance <= 0) {
+          spawnRow();
+          spawnDistance += .62 + Math.random() * .26;
+        }
+
+        playerX += (Number(keys.right) - Number(keys.left)) * delta * 1.55;
+        if (touchX !== null) {
+          const target = Math.max(-.86, Math.min(.86, (touchX / canvas.clientWidth - .5) * 1.8));
+          playerX += (target - playerX) * Math.min(1, delta * 4);
+        }
+        playerX = Math.max(-.87, Math.min(.87, playerX));
+
+        for (const item of [...obstacles, ...flakes]) item.z -= speed * delta;
+        const hit = obstacles.findIndex((item) => item.z <= .072 && item.z >= -.04
+          && Math.abs(item.x - playerX) < .18
+          && !(item.kind === "rock" && now < jumpUntil));
+        if (hit !== -1) {
+          finishRide();
+          return;
+        }
+        obstacles = obstacles.filter((item) => item.z > -.14);
+        flakes = flakes.filter((item) => {
+          if (item.z <= .072 && item.z >= -.04 && Math.abs(item.x - playerX) < .19) {
+            flakeCount += 1;
+            return false;
+          }
+          return item.z > -.14;
+        });
+
+        const roundedDistance = Math.floor(distance);
+        if (roundedDistance > best) {
+          best = roundedDistance;
+          if (Date.now() - lastSavedAt > 1000) {
+            saveBest();
+            lastSavedAt = Date.now();
+          }
+        }
+        distanceDisplay.textContent = `${roundedDistance} m`;
+        flakesDisplay.textContent = String(flakeCount);
+        bestDisplay.textContent = `${best} m`;
+      }
+
+      function finishRide() {
+        running = false;
+        ended = true;
+        cancelAnimationFrame(frameId);
+        startButton.textContent = "Ride again";
+        message.textContent = `You rode ${Math.floor(distance)} m and picked up ${flakeCount} ${flakeCount === 1 ? "snowflake" : "snowflakes"}.`;
+        best = Math.max(best, Math.floor(distance));
+        saveBest();
+        bestDisplay.textContent = `${best} m`;
+        render(performance.now());
+      }
+
+      function loop(now) {
+        if (!running) return;
+        const delta = Math.min(.05, (now - lastFrame) / 1000);
+        lastFrame = now;
+        update(delta, now);
+        render(now, delta);
+        if (running) frameId = requestAnimationFrame(loop);
+      }
+
+      function jump() {
+        if (!running) return;
+        jumpUntil = performance.now() + 650;
+      }
+
+      function startRide() {
+        cancelAnimationFrame(frameId);
+        obstacles = [];
+        flakes = [];
+        distance = 0;
+        flakeCount = 0;
+        playerX = 0;
+        speed = .3;
+        spawnDistance = .34;
+        jumpUntil = 0;
+        ended = false;
+        running = true;
+        lastFrame = performance.now();
+        startButton.textContent = "Riding…";
+        message.textContent = "Find a clear line. Jump just before a rock.";
+        distanceDisplay.textContent = "0 m";
+        flakesDisplay.textContent = "0";
+        frameId = requestAnimationFrame(loop);
+      }
+
+      function setKey(event, pressed) {
+        const key = event.key.toLowerCase();
+        if (key === "arrowleft" || key === "a") {
+          keys.left = pressed;
+          event.preventDefault();
+        } else if (key === "arrowright" || key === "d") {
+          keys.right = pressed;
+          event.preventDefault();
+        } else if ((key === " " || key === "arrowup" || key === "w") && pressed && !event.repeat) {
+          event.preventDefault();
+          jump();
+        }
+      }
+
+      function bindHold(id, direction) {
+        const button = document.getElementById(id);
+        button.addEventListener("pointerdown", (event) => {
+          event.preventDefault();
+          keys[direction] = true;
+          button.setPointerCapture(event.pointerId);
+        });
+        for (const eventName of ["pointerup", "pointercancel", "lostpointercapture"]) {
+          button.addEventListener(eventName, () => { keys[direction] = false; });
+        }
+      }
+
+      canvas.addEventListener("pointerdown", (event) => {
+        if (event.pointerType === "touch") {
+          canvas.setPointerCapture(event.pointerId);
+          touchX = event.offsetX;
+        }
+      });
+      canvas.addEventListener("pointermove", (event) => {
+        if (event.pointerType === "touch" && canvas.hasPointerCapture(event.pointerId)) touchX = event.offsetX;
+      });
+      for (const eventName of ["pointerup", "pointercancel", "lostpointercapture"]) {
+        canvas.addEventListener(eventName, () => { touchX = null; });
+      }
+      document.addEventListener("keydown", (event) => setKey(event, true));
+      document.addEventListener("keyup", (event) => setKey(event, false));
+      window.addEventListener("blur", () => { keys.left = false; keys.right = false; touchX = null; });
+      window.addEventListener("pagehide", () => cancelAnimationFrame(frameId), { once: true });
+      bindHold("left", "left");
+      bindHold("right", "right");
+      document.getElementById("jump").addEventListener("pointerdown", jump);
+      startButton.addEventListener("click", startRide);
+      best = readBest();
+      bestDisplay.textContent = `${best} m`;
+      render();
+    })();
+  </script>
+</body>
+</html>
